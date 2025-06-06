@@ -2,36 +2,194 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Real-Time BTC/USD Analytics</title>
+  <title>Real-Time BTC/USD Analytics Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 900px;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 20px;
+      background-color: #f8f9fa;
     }
-    h1 {
+    h1, h2, h3 {
       color: #333;
       text-align: center;
     }
-    #chart {
-      display: block;
-      margin: 0 auto;
-      background-color: #f9f9f9;
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .chart-container {
+      background-color: white;
       border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .full-width {
+      grid-column: 1 / -1;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 10px;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    select, button {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: white;
+      cursor: pointer;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-value {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #333;
+    }
+    .stat-label {
+      font-size: 0.9em;
+      color: #666;
     }
     footer {
       margin-top: 40px;
       text-align: center;
       font-size: 0.8em;
       color: #666;
+      padding: 10px;
+      background-color: white;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      font-style: italic;
+      color: #666;
+    }
+    @media (max-width: 768px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+      .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
   </style>
 </head>
 <body>
-  <h1>BTC-USD Real-Time Chart</h1>
-  <div id="chart" width="800" height="400"></div>
+  <h1>BTC-USD Real-Time Analytics Dashboard</h1>
+  
+  <div class="controls">
+    <div class="control-group">
+      <label for="timeframe">Timeframe:</label>
+      <select id="timeframe">
+        <option value="1m">1 Minute</option>
+        <option value="5m" selected>5 Minutes</option>
+        <option value="15m">15 Minutes</option>
+        <option value="1h">1 Hour</option>
+        <option value="all">All Data</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="aggregation">Aggregation:</label>
+      <select id="aggregation">
+        <option value="none" selected>None</option>
+        <option value="1s">1 Second</option>
+        <option value="5s">5 Seconds</option>
+        <option value="10s">10 Seconds</option>
+        <option value="30s">30 Seconds</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <button id="reset-zoom">Reset Zoom</button>
+      <button id="toggle-simulation">Pause</button>
+    </div>
+  </div>
+  
+  <div class="stats-container">
+    <div class="stat-card">
+      <div class="stat-value" id="current-price">$0.00</div>
+      <div class="stat-label">Current Price</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="price-change">0.00%</div>
+      <div class="stat-label">Change (Session)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="session-high">$0.00</div>
+      <div class="stat-label">Session High</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="session-low">$0.00</div>
+      <div class="stat-label">Session Low</div>
+    </div>
+  </div>
+  
+  <div class="dashboard">
+    <div class="chart-container full-width">
+      <h2>Price Chart</h2>
+      <div id="price-chart" class="chart"></div>
+    </div>
+    
+    <div class="chart-container">
+      <h3>Price Volatility</h3>
+      <div id="volatility-chart" class="chart"></div>
+    </div>
+    
+    <div class="chart-container">
+      <h3>Price Distribution</h3>
+      <div id="distribution-chart" class="chart"></div>
+    </div>
+    
+    <div class="chart-container full-width">
+      <h3>Moving Averages</h3>
+      <div id="ma-chart" class="chart"></div>
+    </div>
+    
+    <div class="chart-container">
+      <h3>Volume Profile</h3>
+      <div id="volume-chart" class="chart"></div>
+    </div>
+    
+    <div class="chart-container">
+      <h3>Price Change Heatmap</h3>
+      <div id="heatmap-chart" class="chart"></div>
+    </div>
+  </div>
 
   <!-- Load Observable Plot -->
   <script src="./static/observable-plot.min.js"></script>
@@ -53,15 +211,16 @@
           .then(module => module.default())
           .catch(err2 => {
             console.error('Fallback also failed:', err2);
-            document.getElementById('chart').innerHTML = 
-              '<p style="color: red;">Failed to load WebAssembly module. Please check the console for errors.</p>';
+            document.querySelectorAll('.chart').forEach(chart => {
+              chart.innerHTML = '<p style="color: red;">Failed to load WebAssembly module. Please check the console for errors.</p>';
+            });
           });
       });
   </script>
   
   <footer>
     <p>Real-Time BTC/USD Analytics with DuckDB-WASM + Rust + D3</p>
-    <p>Data source: Coinbase WebSocket API</p>
+    <p>Data source: Coinbase WebSocket API (Simulated)</p>
   </footer>
 </body>
 </html>
