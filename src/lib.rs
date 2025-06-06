@@ -7,7 +7,7 @@ pub fn start() -> Result<(), JsValue> {
     let ws = WebSocket::new("wss://ws-feed.exchange.coinbase.com")?;
     
     let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |event: MessageEvent| {
-        if let Ok(data) = event.data().as_string() {
+        if let Some(data) = event.data().as_string() {
             let _ = send_to_js(&data);
         }
     });

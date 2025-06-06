@@ -1,6 +1,4 @@
+# Trunk.toml
 [build]
-target = "wasm32-unknown-unknown"
-
-[serve]
-port = 8080
+target = "static/index.html"
 
