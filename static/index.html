@@ -37,10 +37,27 @@
   <!-- Load Observable Plot -->
   <script src="./observable-plot.min.js"></script>
   
-  <!-- This will be replaced by Trunk during build -->
+  <!-- Load the WebAssembly module -->
   <script type="module">
-    import init from '../pkg/rt_duckdb_coinbase.js';
-    init();
+    // Use a more reliable path that works with both local and GitHub Pages
+    const modulePath = window.location.pathname.endsWith('/') 
+      ? `${window.location.pathname.replace('/static/', '/pkg/')}rt_duckdb_coinbase.js`
+      : `${window.location.pathname.replace('/static/', '/pkg/')}/rt_duckdb_coinbase.js`;
+    
+    // Fallback to relative path if the above doesn't work
+    import(modulePath)
+      .then(module => module.default())
+      .catch(err => {
+        console.error('Failed to load module from path:', modulePath, err);
+        console.log('Trying fallback path...');
+        return import('../pkg/rt_duckdb_coinbase.js')
+          .then(module => module.default())
+          .catch(err2 => {
+            console.error('Fallback also failed:', err2);
+            document.getElementById('chart').innerHTML = 
+              '<p style="color: red;">Failed to load WebAssembly module. Please check the console for errors.</p>';
+          });
+      });
   </script>
   
   <footer>

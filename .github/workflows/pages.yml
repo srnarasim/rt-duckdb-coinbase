@@ -59,7 +59,22 @@ jobs:
           
           # Create a dist directory for GitHub Pages
           mkdir -p dist
-          cp -r index.html pkg static dist/
+          cp -r index.html pkg static .nojekyll .htaccess web.config netlify.toml dist/
+          
+          # Create a .nojekyll file in the dist directory to prevent Jekyll processing
+          touch dist/.nojekyll
+          
+          # Create a _headers file for Netlify/GitHub Pages to set correct MIME types
+          cat > dist/_headers << EOF
+          /*
+            Access-Control-Allow-Origin: *
+          
+          /*.wasm
+            Content-Type: application/wasm
+          
+          /*.js
+            Content-Type: application/javascript
+          EOF
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
