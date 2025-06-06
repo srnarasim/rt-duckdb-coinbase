@@ -1,29 +1,52 @@
-<!-- static/index.html -->
+<!-- static/index.html - This is a fallback version -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Real-Time BTC/USD Analytics</title>
-<link rel="modulepreload" href="/rt-duckdb-coinbase-2efc77b9fa92161d.js" crossorigin="anonymous" integrity="sha384-bK8YuT8cRD1LY/QrP02GS8Rb06p1Sv4UnLzyapzrNb3nxoiZeTlrMj5jWXSN38n4"><link rel="modulepreload" href="/snippets/rt-duckdb-coinbase-5ad6744fea6f1bc7/js/duckdb.js" crossorigin="anonymous" integrity="sha384-wKabo3hflOyvM87iVYCotJ8F+D7IGLxKd6E/ClFC2CSfjlhEuuJMaN8UjL8xupxL"><link rel="preload" href="/rt-duckdb-coinbase-2efc77b9fa92161d_bg.wasm" crossorigin="anonymous" integrity="sha384-ECaAOutBNZWseoOZo9+lrQYGtL5LVABJnOzIQ+3C/bd0E7sKxDE5R+tqg8e8fQ5r" as="fetch" type="application/wasm"></head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    #chart {
+      display: block;
+      margin: 0 auto;
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
+    }
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 0.8em;
+      color: #666;
+    }
+  </style>
+</head>
 <body>
   <h1>BTC-USD Real-Time Chart</h1>
-  <canvas id="chart" width="800" height="400"></canvas>
+  <div id="chart" width="800" height="400"></div>
 
+  <!-- Load Observable Plot -->
+  <script src="./observable-plot.min.js"></script>
+  
+  <!-- This will be replaced by Trunk during build -->
   <script type="module">
-    import init from "../pkg/rt_duckdb_coinbase.js";
+    import init from '../pkg/rt_duckdb_coinbase.js';
     init();
   </script>
-
-<script type="module">
-import init, * as bindings from '/rt-duckdb-coinbase-2efc77b9fa92161d.js';
-const wasm = await init({ module_or_path: '/rt-duckdb-coinbase-2efc77b9fa92161d_bg.wasm' });
-
-
-window.wasmBindings = bindings;
-
-
-dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
-
-</script></body>
+  
+  <footer>
+    <p>Real-Time BTC/USD Analytics with DuckDB-WASM + Rust + D3</p>
+    <p>Data source: Coinbase WebSocket API</p>
+  </footer>
+</body>
 </html>
 

@@ -1,0 +1,14 @@
+# These owners will be the default owners for everything in the repo
+* @srnarasim
+
+# Rust code
+*.rs @srnarasim
+
+# JavaScript files
+*.js @srnarasim
+
+# HTML files
+*.html @srnarasim
+
+# GitHub Actions workflows
+.github/workflows/* @srnarasim
