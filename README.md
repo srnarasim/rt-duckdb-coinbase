@@ -74,19 +74,17 @@ trunk serve
 
 ## 🚀 Deployment Options
 
-### GitHub Actions Artifacts
-
-The GitHub Actions workflows in this repository build the application and upload the artifacts. You can download these artifacts and deploy them to any static web server.
-
 ### GitHub Pages
 
-To deploy this application to GitHub Pages:
+This application is automatically deployed to GitHub Pages when changes are pushed to the main branch. You can access the live demo at:
 
-1. Enable GitHub Pages for this repository in the repository settings
-2. Configure GitHub Pages to use the 'GitHub Actions' source
-3. Uncomment the deployment job in the `.github/workflows/pages.yml` file
+[https://srnarasim.github.io/rt-duckdb-coinbase/](https://srnarasim.github.io/rt-duckdb-coinbase/)
 
-Note: GitHub Pages for private repositories requires a GitHub Pro, Team, or Enterprise plan.
+The GitHub Actions workflow in `.github/workflows/pages.yml` handles the build and deployment process.
+
+### GitHub Actions Artifacts
+
+The GitHub Actions workflows in this repository also build the application and upload the artifacts. You can download these artifacts and deploy them to any static web server.
 
 ### Other Hosting Options
 
