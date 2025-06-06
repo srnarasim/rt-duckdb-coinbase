@@ -10,6 +10,13 @@ cargo build --target wasm32-unknown-unknown --release
 # Copy the WASM file to the pkg directory
 cp target/wasm32-unknown-unknown/release/rt_duckdb_coinbase.wasm pkg/
 
+# Create a simple metadata file to help with debugging
+cat > pkg/metadata.txt << EOF
+Build date: $(date)
+Rust version: $(rustc --version)
+WebAssembly target: wasm32-unknown-unknown
+EOF
+
 # Create the JavaScript binding file
 cat > pkg/rt_duckdb_coinbase.js << 'EOF'
 // JavaScript bindings for the Rust WASM module
@@ -180,5 +187,9 @@ EOF
 
 # Make the script executable
 chmod +x build.sh
+
+# List the contents of the pkg directory
+echo "Contents of pkg directory:"
+ls -la pkg/
 
 echo "Build completed successfully!"
