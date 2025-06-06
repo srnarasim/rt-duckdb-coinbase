@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Build and Package Application
 
 on:
   # Runs on pushes targeting the default branch
@@ -8,17 +8,9 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Sets permissions of the GITHUB_TOKEN
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
   # Build job
@@ -27,9 +19,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
       
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -57,23 +46,44 @@ jobs:
           chmod +x build.sh
           ./build.sh
           
-          # Create a dist directory for GitHub Pages
+          # Create a dist directory
           mkdir -p dist
           cp -r index.html pkg static dist/
       
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
+          name: dist
           path: ./dist
-
-  # Deployment job
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          retention-days: 7
+      
+      - name: Create deployment instructions
+        run: |
+          echo "## Deployment Instructions" > DEPLOYMENT.md
+          echo "" >> DEPLOYMENT.md
+          echo "This application is built and ready to be deployed. You can deploy it using any static web server." >> DEPLOYMENT.md
+          echo "" >> DEPLOYMENT.md
+          echo "### Local Deployment" >> DEPLOYMENT.md
+          echo "" >> DEPLOYMENT.md
+          echo "1. Download the artifact from this workflow run" >> DEPLOYMENT.md
+          echo "2. Extract the contents to a directory" >> DEPLOYMENT.md
+          echo "3. Serve the directory using a static web server, e.g.:" >> DEPLOYMENT.md
+          echo "   ```bash" >> DEPLOYMENT.md
+          echo "   python -m http.server 8000" >> DEPLOYMENT.md
+          echo "   ```" >> DEPLOYMENT.md
+          echo "4. Access the application at http://localhost:8000" >> DEPLOYMENT.md
+          echo "" >> DEPLOYMENT.md
+          echo "### GitHub Pages Deployment" >> DEPLOYMENT.md
+          echo "" >> DEPLOYMENT.md
+          echo "To deploy to GitHub Pages:" >> DEPLOYMENT.md
+          echo "" >> DEPLOYMENT.md
+          echo "1. Enable GitHub Pages for this repository in the repository settings" >> DEPLOYMENT.md
+          echo "2. Configure GitHub Pages to use the 'GitHub Actions' source" >> DEPLOYMENT.md
+          echo "3. The GitHub Actions workflow will automatically deploy the application to GitHub Pages" >> DEPLOYMENT.md
+      
+      - name: Upload deployment instructions
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-instructions
+          path: DEPLOYMENT.md
+          retention-days: 7

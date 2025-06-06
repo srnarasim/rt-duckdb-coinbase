@@ -46,7 +46,7 @@ rt-duckdb-coinbase/
 
 ## 🛠️ Getting Started
 
-### 1. Build and Run
+### 1. Build and Run Locally
 
 ```bash
 # Navigate to the project directory
@@ -71,6 +71,32 @@ cargo install trunk
 # Build and serve
 trunk serve
 ```
+
+## 🚀 Deployment Options
+
+### GitHub Actions Artifacts
+
+The GitHub Actions workflows in this repository build the application and upload the artifacts. You can download these artifacts and deploy them to any static web server.
+
+### GitHub Pages
+
+To deploy this application to GitHub Pages:
+
+1. Enable GitHub Pages for this repository in the repository settings
+2. Configure GitHub Pages to use the 'GitHub Actions' source
+3. Uncomment the deployment job in the `.github/workflows/pages.yml` file
+
+Note: GitHub Pages for private repositories requires a GitHub Pro, Team, or Enterprise plan.
+
+### Other Hosting Options
+
+This application can be hosted on any static web hosting service, such as:
+
+- Netlify
+- Vercel
+- AWS S3 + CloudFront
+- Azure Static Web Apps
+- Google Cloud Storage
 
 ## 📝 Implementation Notes
 
