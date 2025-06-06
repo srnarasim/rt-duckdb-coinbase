@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Real-Time BTC Price (DuckDB + WASM)</title>
+  <script type="module" src="/js/duckdb.js"></script>
+  <script src="/static/observable-plot.min.js"></script>
+</head>
+<body>
+  <h1>BTC Price - Coinbase (Real-Time)</h1>
+  <div id="chart"></div>
+  <script type="module">
+    import init from "/pkg/real_time_duckdb_coinbase.js";
+    init();
+  </script>
+</body>
+</html>
+
