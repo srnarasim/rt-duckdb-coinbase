@@ -19,6 +19,7 @@ A lightweight, browser-based real-time analytics demo built using:
 ## 📦 Project Structure
 
 rt-duckdb-coinbase/
+
 ├── Cargo.toml # Rust crate config
 
 ├── Trunk.toml # Trunk build config
