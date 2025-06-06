@@ -18,15 +18,23 @@ A lightweight, browser-based real-time analytics demo built using:
 
 ## 📦 Project Structure
 
-t-duckdb-coinbase/
+rt-duckdb-coinbase/
 ├── Cargo.toml # Rust crate config
+
 ├── Trunk.toml # Trunk build config
+
 ├── index.html # Entry HTML file for app
+
 ├── src/
+
 │ └── lib.rs # Rust/WASM code - WebSocket + JS binding
+
 ├── static/
+
 │ ├── duckdb-wasm.js # DuckDB-WASM runtime (optional, can use CDN)
+
 │ └── observable-plot.min.js # ObservablePlot for charting
+
 
 
 ---
