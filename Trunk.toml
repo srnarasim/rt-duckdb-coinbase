@@ -1,4 +1,4 @@
 # Trunk.toml
 [build]
-target = "static/index.html"
+target = "index.html"
 
