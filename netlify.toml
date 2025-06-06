@@ -1,0 +1,18 @@
+[build]
+  publish = "dist"
+  command = "./build.sh && mkdir -p dist && cp -r index.html pkg static .nojekyll dist/"
+
+[[headers]]
+  for = "/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Content-Type = "application/javascript"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"

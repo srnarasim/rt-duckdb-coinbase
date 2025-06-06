@@ -46,7 +46,7 @@ rt-duckdb-coinbase/
 
 ## 🛠️ Getting Started
 
-### 1. Build and Run
+### 1. Build and Run Locally
 
 ```bash
 # Navigate to the project directory
@@ -71,6 +71,30 @@ cargo install trunk
 # Build and serve
 trunk serve
 ```
+
+## 🚀 Deployment Options
+
+### GitHub Pages
+
+This application is automatically deployed to GitHub Pages when changes are pushed to the main branch. You can access the live demo at:
+
+[https://srnarasim.github.io/rt-duckdb-coinbase/](https://srnarasim.github.io/rt-duckdb-coinbase/)
+
+The GitHub Actions workflow in `.github/workflows/pages.yml` handles the build and deployment process.
+
+### GitHub Actions Artifacts
+
+The GitHub Actions workflows in this repository also build the application and upload the artifacts. You can download these artifacts and deploy them to any static web server.
+
+### Other Hosting Options
+
+This application can be hosted on any static web hosting service, such as:
+
+- Netlify
+- Vercel
+- AWS S3 + CloudFront
+- Azure Static Web Apps
+- Google Cloud Storage
 
 ## 📝 Implementation Notes
 

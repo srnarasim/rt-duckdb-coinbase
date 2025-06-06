@@ -34,9 +34,14 @@ jobs:
         cargo install --locked trunk
         trunk --version
 
-    - name: Build with Trunk
+    - name: Build with build script
       run: |
-        trunk build --release
+        chmod +x build.sh
+        ./build.sh
+        
+        # Create a dist directory
+        mkdir -p dist
+        cp -r index.html pkg static dist/
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -44,35 +49,4 @@ jobs:
         name: dist
         path: dist/
         if-no-files-found: error
-
-  deploy:
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
-
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: dist
-        path: dist
-
-    - name: Upload GitHub Pages artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: dist
-
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+        retention-days: 7
