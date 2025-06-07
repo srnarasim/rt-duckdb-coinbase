@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Simple Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    #chart {
+      width: 100%;
+      height: 400px;
+      border: 1px solid #ddd;
+      margin-top: 20px;
+    }
+    #log {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple Test</h1>
+  <div id="chart"></div>
+  <div id="log">Console output will appear here...</div>
+
+  <script>
+    // Redirect console.log to our log div
+    const logDiv = document.getElementById('log');
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    
+    console.log = function() {
+      const args = Array.from(arguments);
+      logDiv.textContent += '> ' + args.join(' ') + '\n';
+      logDiv.scrollTop = logDiv.scrollHeight;
+      originalConsoleLog.apply(console, arguments);
+    };
+    
+    console.error = function() {
+      const args = Array.from(arguments);
+      logDiv.textContent += '> ERROR: ' + args.join(' ') + '\n';
+      logDiv.scrollTop = logDiv.scrollHeight;
+      originalConsoleError.apply(console, arguments);
+    };
+    
+    // Simple chart drawing function
+    function drawChart(data) {
+      const chartElement = document.getElementById('chart');
+      if (!chartElement) {
+        console.error('Chart element not found');
+        return;
+      }
+      
+      // Clear previous content
+      chartElement.innerHTML = '';
+      
+      // Create canvas for drawing
+      const canvas = document.createElement('canvas');
+      canvas.width = chartElement.clientWidth || 800;
+      canvas.height = chartElement.clientHeight || 400;
+      chartElement.appendChild(canvas);
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Draw chart background
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw axes
+      ctx.strokeStyle = '#000';
+      ctx.beginPath();
+      ctx.moveTo(50, 20);
+      ctx.lineTo(50, canvas.height - 30);
+      ctx.lineTo(canvas.width - 20, canvas.height - 30);
+      ctx.stroke();
+      
+      // Draw data if available
+      if (data && data.length > 1) {
+        // Find min/max values for scaling
+        let minY = Infinity;
+        let maxY = -Infinity;
+        let minX = 0;
+        let maxX = data.length - 1;
+        
+        data.forEach(d => {
+          minY = Math.min(minY, d);
+          maxY = Math.max(maxY, d);
+        });
+        
+        // Add some padding
+        minY = minY * 0.9;
+        maxY = maxY * 1.1;
+        
+        // Draw the line
+        ctx.strokeStyle = '#3498db';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        data.forEach((d, i) => {
+          // Scale to canvas
+          const x = 50 + (i - minX) / (maxX - minX) * (canvas.width - 70);
+          const y = (canvas.height - 30) - (d - minY) / (maxY - minY) * (canvas.height - 50);
+          
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        
+        ctx.stroke();
+        
+        // Add current value display
+        const currentValue = data[data.length - 1];
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(`Current Value: ${currentValue.toFixed(2)}`, 60, 40);
+      }
+      
+      console.log('Chart drawn successfully');
+    }
+    
+    // Generate random data
+    function generateData(length) {
+      const data = [];
+      let value = 100;
+      
+      for (let i = 0; i < length; i++) {
+        value += (Math.random() - 0.5) * 10;
+        data.push(value);
+      }
+      
+      return data;
+    }
+    
+    // Draw initial chart
+    const data = generateData(20);
+    drawChart(data);
+    console.log('Initial chart drawn with data:', data);
+    
+    // Update chart every 2 seconds
+    setInterval(() => {
+      const newData = [...data];
+      newData.push(newData[newData.length - 1] + (Math.random() - 0.5) * 10);
+      
+      if (newData.length > 50) {
+        newData.shift();
+      }
+      
+      drawChart(newData);
+      console.log('Chart updated with new data point:', newData[newData.length - 1].toFixed(2));
+    }, 2000);
+  </script>
+</body>
+</html>
