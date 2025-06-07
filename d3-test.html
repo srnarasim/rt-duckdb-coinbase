@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D3 Chart Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+</head>
+<body>
+  <h1>D3 Chart Test</h1>
+  <p>This is a simple test to see if D3 charting works on GitHub Pages.</p>
+  
+  <div id="chart" style="width: 800px; height: 400px; border: 1px solid #ccc;"></div>
+  
+  <script>
+    // Generate some test data
+    const data = [];
+    const now = new Date();
+    for (let i = 0; i < 20; i++) {
+      const time = new Date(now.getTime() - (20 - i) * 60000);
+      const price = 30000 + Math.random() * 1000;
+      data.push({ time, price });
+    }
+    
+    // Create a simple D3 chart
+    const margin = {top: 20, right: 30, bottom: 30, left: 60};
+    const width = 800 - margin.left - margin.right;
+    const height = 400 - margin.top - margin.bottom;
+    
+    const svg = d3.select("#chart")
+      .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+    
+    // X scale
+    const x = d3.scaleTime()
+      .domain(d3.extent(data, d => d.time))
+      .range([0, width]);
+    
+    // Y scale
+    const y = d3.scaleLinear()
+      .domain([d3.min(data, d => d.price) * 0.99, d3.max(data, d => d.price) * 1.01])
+      .range([height, 0]);
+    
+    // Add X axis
+    svg.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(x));
+    
+    // Add Y axis
+    svg.append("g")
+      .call(d3.axisLeft(y));
+    
+    // Add the line
+    svg.append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", "#3498db")
+      .attr("stroke-width", 2)
+      .attr("d", d3.line()
+        .x(d => x(d.time))
+        .y(d => y(d.price))
+      );
+    
+    // Add dots
+    svg.selectAll("circle")
+      .data(data)
+      .join("circle")
+        .attr("cx", d => x(d.time))
+        .attr("cy", d => y(d.price))
+        .attr("r", 3)
+        .attr("fill", "#3498db");
+    
+    // Add current price text
+    svg.append("text")
+      .attr("x", 10)
+      .attr("y", 20)
+      .text(`Current Price: $${data[data.length-1].price.toFixed(2)}`)
+      .style("font-size", "16px")
+      .style("font-weight", "bold");
+  </script>
+</body>
+</html>
