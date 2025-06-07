@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Compatibility Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    h1, h2, h3 {
+      color: #333;
+      text-align: center;
+    }
+    .chart-container {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 0 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .hidden {
+      display: none;
+    }
+    #log {
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      margin-top: 20px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Compatibility Demo</h1>
+  
+  <div class="controls">
+    <button id="show-old">Show Old Structure</button>
+    <button id="show-new">Show New Structure</button>
+    <button id="clear-log">Clear Log</button>
+  </div>
+  
+  <!-- Old Structure -->
+  <div id="old-structure" class="chart-container">
+    <h2>Old Structure</h2>
+    <div id="chart"></div>
+  </div>
+  
+  <!-- New Structure -->
+  <div id="new-structure" class="chart-container hidden">
+    <h2>New Structure</h2>
+    <div id="price-chart"></div>
+  </div>
+  
+  <div id="log">Console output will appear here...</div>
+  
+  <script>
+    // Redirect console.log to our log div
+    const logDiv = document.getElementById('log');
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    
+    console.log = function() {
+      const args = Array.from(arguments);
+      logDiv.textContent += '> ' + args.join(' ') + '\n';
+      logDiv.scrollTop = logDiv.scrollHeight;
+      originalConsoleLog.apply(console, arguments);
+    };
+    
+    console.error = function() {
+      const args = Array.from(arguments);
+      logDiv.textContent += '> ERROR: ' + args.join(' ') + '\n';
+      logDiv.scrollTop = logDiv.scrollHeight;
+      originalConsoleError.apply(console, arguments);
+    };
+    
+    // Toggle between old and new structure
+    const oldStructure = document.getElementById('old-structure');
+    const newStructure = document.getElementById('new-structure');
+    
+    document.getElementById('show-old').addEventListener('click', function() {
+      oldStructure.classList.remove('hidden');
+      newStructure.classList.add('hidden');
+      console.log('Showing old structure');
+      drawChart();
+    });
+    
+    document.getElementById('show-new').addEventListener('click', function() {
+      oldStructure.classList.add('hidden');
+      newStructure.classList.remove('hidden');
+      console.log('Showing new structure');
+      drawChart();
+    });
+    
+    document.getElementById('clear-log').addEventListener('click', function() {
+      logDiv.textContent = 'Console output will appear here...\n';
+    });
+    
+    // Generate test data
+    function generateTestData() {
+      const testData = [];
+      const now = new Date();
+      for (let i = 0; i < 20; i++) {
+        const time = new Date(now.getTime() - (20 - i) * 60000).toISOString();
+        const price = 30000 + Math.random() * 1000;
+        testData.push({ time, price });
+      }
+      return testData;
+    }
+    
+    // Compatibility module
+    const checkStructure = function() {
+      const isNewStructure = document.getElementById('price-chart') !== null && 
+                            !document.getElementById('price-chart').closest('.hidden');
+      const isOldStructure = document.getElementById('chart') !== null && 
+                            !document.getElementById('chart').closest('.hidden');
+      
+      console.log("Using new chart structure:", isNewStructure);
+      console.log("Using old chart structure:", isOldStructure);
+      
+      return { isNewStructure, isOldStructure };
+    };
+    
+    const legacyDrawChart = function(data) {
+      const chartElement = document.getElementById('chart');
+      if (!chartElement || chartElement.closest('.hidden')) {
+        console.error('Chart element not found or hidden');
+        return;
+      }
+      
+      // Clear previous content
+      chartElement.innerHTML = '';
+      
+      // Create canvas for drawing
+      const canvas = document.createElement('canvas');
+      canvas.width = chartElement.clientWidth || 800;
+      canvas.height = 300;
+      chartElement.appendChild(canvas);
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Draw chart background
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw axes
+      ctx.strokeStyle = '#000';
+      ctx.beginPath();
+      ctx.moveTo(50, 20);
+      ctx.lineTo(50, canvas.height - 30);
+      ctx.lineTo(canvas.width - 20, canvas.height - 30);
+      ctx.stroke();
+      
+      // Add y-axis label
+      ctx.save();
+      ctx.translate(15, canvas.height / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000';
+      ctx.fillText('BTC Price (USD)', 0, 0);
+      ctx.restore();
+      
+      // Draw data if available
+      if (data && data.length > 1) {
+        // Find min/max values for scaling
+        let minY = Infinity;
+        let maxY = -Infinity;
+        let minX = new Date(data[0].time).getTime();
+        let maxX = new Date(data[data.length - 1].time).getTime();
+        
+        data.forEach(d => {
+          const yVal = parseFloat(d.price);
+          minY = Math.min(minY, yVal);
+          maxY = Math.max(maxY, yVal);
+        });
+        
+        // Add some padding
+        minY = minY * 0.99;
+        maxY = maxY * 1.01;
+        
+        // Draw the line
+        ctx.strokeStyle = '#3498db';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        data.forEach((d, i) => {
+          const xVal = new Date(d.time).getTime();
+          const yVal = parseFloat(d.price);
+          
+          // Scale to canvas
+          const x = 50 + (xVal - minX) / (maxX - minX) * (canvas.width - 70);
+          const y = (canvas.height - 30) - (yVal - minY) / (maxY - minY) * (canvas.height - 50);
+          
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        
+        ctx.stroke();
+        
+        // Add price labels
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'right';
+        ctx.fillText(maxY.toFixed(2), 45, 25);
+        ctx.fillText(minY.toFixed(2), 45, canvas.height - 35);
+        
+        // Add current price display
+        const currentPrice = data[data.length - 1].price;
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(`Current Price: $${currentPrice.toFixed(2)}`, 60, 40);
+      }
+      
+      console.log('Drew legacy chart with data');
+    };
+    
+    const drawNewChart = function(data) {
+      const chartElement = document.getElementById('price-chart');
+      if (!chartElement || chartElement.closest('.hidden')) {
+        console.error('Price chart element not found or hidden');
+        return;
+      }
+      
+      // Clear previous content
+      chartElement.innerHTML = '';
+      
+      // Create canvas for drawing
+      const canvas = document.createElement('canvas');
+      canvas.width = chartElement.clientWidth || 800;
+      canvas.height = 300;
+      chartElement.appendChild(canvas);
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Draw chart background
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw axes
+      ctx.strokeStyle = '#000';
+      ctx.beginPath();
+      ctx.moveTo(50, 20);
+      ctx.lineTo(50, canvas.height - 30);
+      ctx.lineTo(canvas.width - 20, canvas.height - 30);
+      ctx.stroke();
+      
+      // Draw data if available
+      if (data && data.length > 1) {
+        // Find min/max values for scaling
+        let minY = Infinity;
+        let maxY = -Infinity;
+        let minX = new Date(data[0].time).getTime();
+        let maxX = new Date(data[data.length - 1].time).getTime();
+        
+        data.forEach(d => {
+          const yVal = parseFloat(d.price);
+          minY = Math.min(minY, yVal);
+          maxY = Math.max(maxY, yVal);
+        });
+        
+        // Add some padding
+        minY = minY * 0.99;
+        maxY = maxY * 1.01;
+        
+        // Draw the line
+        ctx.strokeStyle = '#3498db';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        data.forEach((d, i) => {
+          const xVal = new Date(d.time).getTime();
+          const yVal = parseFloat(d.price);
+          
+          // Scale to canvas
+          const x = 50 + (xVal - minX) / (maxX - minX) * (canvas.width - 70);
+          const y = (canvas.height - 30) - (yVal - minY) / (maxY - minY) * (canvas.height - 50);
+          
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        
+        ctx.stroke();
+      }
+      
+      console.log('Drew new chart with data');
+    };
+    
+    // Draw chart based on current structure
+    function drawChart() {
+      const testData = generateTestData();
+      const { isNewStructure, isOldStructure } = checkStructure();
+      
+      if (isOldStructure) {
+        console.log('Using legacy chart drawing function');
+        legacyDrawChart(testData);
+      } else if (isNewStructure) {
+        console.log('Using new chart drawing function');
+        drawNewChart(testData);
+      } else {
+        console.error('No compatible chart structure found');
+      }
+    }
+    
+    // Initial draw
+    drawChart();
+  </script>
+</body>
+</html>
