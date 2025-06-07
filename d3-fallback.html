@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Real-Time BTC/USD Analytics Dashboard (D3 Fallback)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    h1, h2, h3 {
+      color: #333;
+      text-align: center;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .chart-container {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .full-width {
+      grid-column: 1 / -1;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 10px;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    select, button {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: white;
+      cursor: pointer;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-value {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #333;
+    }
+    .stat-label {
+      font-size: 0.9em;
+      color: #666;
+    }
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 0.8em;
+      color: #666;
+      padding: 10px;
+      background-color: white;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+    }
+    @media (max-width: 768px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+      .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>BTC-USD Real-Time Analytics Dashboard (D3 Fallback)</h1>
+  
+  <div class="controls">
+    <div class="control-group">
+      <label for="data-source">Data Source:</label>
+      <select id="data-source">
+        <option value="simulated" selected>Simulated Data</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="timeframe">Timeframe:</label>
+      <select id="timeframe">
+        <option value="1m">1 Minute</option>
+        <option value="5m" selected>5 Minutes</option>
+        <option value="15m">15 Minutes</option>
+        <option value="1h">1 Hour</option>
+        <option value="all">All Data</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <button id="reset-zoom">Reset Zoom</button>
+      <button id="toggle-simulation">Pause</button>
+    </div>
+  </div>
+  
+  <div class="stats-container">
+    <div class="stat-card">
+      <div class="stat-value" id="current-price">$0.00</div>
+      <div class="stat-label">Current Price</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="price-change">0.00%</div>
+      <div class="stat-label">Change (Session)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="session-high">$0.00</div>
+      <div class="stat-label">Session High</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="session-low">$0.00</div>
+      <div class="stat-label">Session Low</div>
+    </div>
+  </div>
+  
+  <div class="dashboard">
+    <div class="chart-container full-width">
+      <h2>Price Chart</h2>
+      <div id="price-chart" class="chart"></div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Real-Time BTC/USD Analytics with D3 (Fallback Version)</p>
+    <p>Data source: Simulated</p>
+    <p><small>This is a fallback version that doesn't require WebAssembly.</small></p>
+  </footer>
+
+  <script>
+    // Generate simulated data
+    let data = [];
+    let isPaused = false;
+    const now = new Date();
+    
+    // Initial price around $30,000
+    let currentPrice = 30000 + Math.random() * 2000;
+    
+    // Generate initial data points
+    for (let i = 0; i < 20; i++) {
+      const time = new Date(now.getTime() - (20 - i) * 60000);
+      // Random walk with slight upward bias
+      currentPrice = currentPrice * (1 + (Math.random() - 0.48) / 100);
+      data.push({ time, price: currentPrice });
+    }
+    
+    // Update stats
+    function updateStats() {
+      if (data.length === 0) return;
+      
+      const latest = data[data.length - 1];
+      const first = data[0];
+      const prices = data.map(d => d.price);
+      const sessionHigh = Math.max(...prices);
+      const sessionLow = Math.min(...prices);
+      const priceChange = ((latest.price - first.price) / first.price) * 100;
+      
+      document.getElementById('current-price').textContent = `$${latest.price.toFixed(2)}`;
+      document.getElementById('price-change').textContent = `${priceChange.toFixed(2)}%`;
+      document.getElementById('price-change').style.color = priceChange >= 0 ? '#4CAF50' : '#f44336';
+      document.getElementById('session-high').textContent = `$${sessionHigh.toFixed(2)}`;
+      document.getElementById('session-low').textContent = `$${sessionLow.toFixed(2)}`;
+    }
+    
+    // Draw price chart using D3
+    function drawPriceChart() {
+      const chartElement = document.getElementById('price-chart');
+      chartElement.innerHTML = '';
+      
+      const margin = {top: 20, right: 30, bottom: 30, left: 60};
+      const width = chartElement.clientWidth - margin.left - margin.right;
+      const height = 400 - margin.top - margin.bottom;
+      
+      const svg = d3.select("#price-chart")
+        .append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+          .attr("transform", `translate(${margin.left},${margin.top})`);
+      
+      // X scale
+      const x = d3.scaleTime()
+        .domain(d3.extent(data, d => d.time))
+        .range([0, width]);
+      
+      // Y scale
+      const y = d3.scaleLinear()
+        .domain([d3.min(data, d => d.price) * 0.998, d3.max(data, d => d.price) * 1.002])
+        .range([height, 0]);
+      
+      // Add X axis
+      svg.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x));
+      
+      // Add Y axis
+      svg.append("g")
+        .call(d3.axisLeft(y));
+      
+      // Add the line
+      svg.append("path")
+        .datum(data)
+        .attr("fill", "none")
+        .attr("stroke", "#3498db")
+        .attr("stroke-width", 2)
+        .attr("d", d3.line()
+          .x(d => x(d.time))
+          .y(d => y(d.price))
+        );
+      
+      // Add dots
+      svg.selectAll("circle")
+        .data(data)
+        .join("circle")
+          .attr("cx", d => x(d.time))
+          .attr("cy", d => y(d.price))
+          .attr("r", 3)
+          .attr("fill", "#3498db");
+    }
+    
+    // Update data and redraw chart
+    function updateData() {
+      if (isPaused) return;
+      
+      const now = new Date();
+      // Random walk with slight upward bias
+      currentPrice = data[data.length - 1].price * (1 + (Math.random() - 0.48) / 100);
+      
+      data.push({ time: now, price: currentPrice });
+      
+      // Keep only the last 100 data points
+      if (data.length > 100) {
+        data.shift();
+      }
+      
+      updateStats();
+      drawPriceChart();
+    }
+    
+    // Initialize
+    updateStats();
+    drawPriceChart();
+    
+    // Update every second
+    setInterval(updateData, 1000);
+    
+    // Event listeners
+    document.getElementById('toggle-simulation').addEventListener('click', function() {
+      isPaused = !isPaused;
+      this.textContent = isPaused ? 'Resume' : 'Pause';
+    });
+    
+    document.getElementById('reset-zoom').addEventListener('click', function() {
+      // Reset data to last 20 points
+      if (data.length > 20) {
+        data = data.slice(data.length - 20);
+      }
+      updateStats();
+      drawPriceChart();
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+      drawPriceChart();
+    });
+  </script>
+</body>
+</html>

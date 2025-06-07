@@ -1,18 +1,18 @@
-# 📊 Real-Time BTC/USD Analytics with DuckDB-WASM + Rust + D3
+# 📊 Real-Time BTC/USD Analytics with DuckDB-WASM + Rust + Observable Plot
 
 A lightweight, browser-based real-time analytics demo built using:
 
 - 🦀 Rust (compiled to WASM)
 - 🧩 DuckDB-WASM (embedded analytical database in browser)
-- 📈 Canvas-based charting
-- 🌐 Coinbase WebSocket API for live crypto market data
+- 📈 Observable Plot for data visualization
+- 🌐 NEX Stream for real-time data (with Coinbase WebSocket API as fallback)
 - 🛰️ Simple HTTP server for serving the app
 
 ---
 
 ## 🚀 Live Demo
 
-The application shows real-time BTC/USD price data in a chart. It connects to the Coinbase WebSocket API to get live market data, or falls back to simulated data if the connection fails.
+The application shows real-time BTC/USD price data in a chart. It connects to a NEX Stream to get live market data, with fallback to the Coinbase WebSocket API or simulated data if the connections fail.
 
 ---
 
@@ -28,14 +28,26 @@ rt-duckdb-coinbase/
 
 ├── build.sh # Build script for compiling Rust to WASM
 
+├── start.sh # Script to start both proxy and main app
+
 ├── src/
 
 │ └── lib.rs # Rust/WASM code - WebSocket + JS binding
+
+├── proxy/ # NEX Stream proxy server
+
+│ ├── Cargo.toml # Proxy crate config
+│ ├── src/main.rs # Proxy server implementation
+│ └── run.sh # Script to build and run the proxy
 
 ├── pkg/
 
 │ ├── rt_duckdb_coinbase.wasm # Compiled WASM file
 │ └── rt_duckdb_coinbase.js # JavaScript bindings for WASM
+
+├── js/
+
+│ └── duckdb.js # JavaScript code for DuckDB integration
 
 ├── static/
 
@@ -46,22 +58,50 @@ rt-duckdb-coinbase/
 
 ## 🛠️ Getting Started
 
-### 1. Build and Run Locally
+### 1. Build and Run with NEX Stream Proxy
 
 ```bash
 # Navigate to the project directory
+cd rt-duckdb-coinbase
+
+# Run the start script (builds and runs both the proxy and main app)
+./start.sh
+```
+
+This will:
+1. Start the NEX Stream proxy with simulated data on port 3030
+2. Build the main application
+3. Start a web server on port 54572
+
+### 2. Build and Run Components Separately
+
+#### Start the NEX Stream Proxy
+
+```bash
+# Navigate to the proxy directory
+cd rt-duckdb-coinbase/proxy
+
+# Build and run the proxy with simulated data
+cargo build --release
+RUST_LOG=info ./target/release/nex-stream-proxy --simulate --port 3030
+```
+
+#### Start the Main Application
+
+```bash
+# In another terminal, navigate to the project directory
 cd rt-duckdb-coinbase
 
 # Build the Rust code to WASM
 ./build.sh
 
 # Start a simple HTTP server
-python -m http.server 8000
+python -m http.server 54572
 ```
 
-### 2. Using Trunk (Alternative)
+### 3. Using Trunk (Alternative)
 
-If you have Trunk installed, you can use it to build and serve the application:
+If you have Trunk installed, you can use it to build and serve the main application:
 
 ```bash
 # Install prerequisites
@@ -71,6 +111,8 @@ cargo install trunk
 # Build and serve
 trunk serve
 ```
+
+Note: When using Trunk, you'll still need to start the NEX Stream proxy separately.
 
 ## 🚀 Deployment Options
 
@@ -100,10 +142,43 @@ This application can be hosted on any static web hosting service, such as:
 
 The application:
 
-1. Connects to the Coinbase WebSocket API to get real-time BTC/USD price data
-2. Stores the data in DuckDB-WASM, an in-browser analytical database
-3. Visualizes the data using canvas-based charting
-4. Updates the chart in real-time as new data arrives
-5. Falls back to simulated data if the WebSocket connection fails
+1. Connects to a NEX Stream to get real-time BTC/USD price data
+2. Falls back to Coinbase WebSocket API if NEX Stream is unavailable
+3. Stores the data in DuckDB-WASM, an in-browser analytical database
+4. Performs real-time analytics using DuckDB's SQL capabilities
+5. Visualizes the data using Observable Plot
+6. Updates the charts in real-time as new data arrives
+7. Falls back to simulated data if both WebSocket connections fail
 
 The implementation uses Rust compiled to WebAssembly for performance and reliability, with JavaScript bindings for browser integration.
+
+### NEX Stream Integration
+
+The application connects to a NEX Stream for real-time market data. The NEX Stream connection:
+
+- Uses WebSocket protocol for real-time data streaming
+- Subscribes to BTC/USD market data
+- Transforms incoming data to a consistent format for processing
+- Handles connection errors gracefully with fallback options
+- Provides source information for data visualization
+
+### NEX Stream Proxy
+
+The application includes a Rust-based proxy server that:
+
+- Simulates a NEX Stream when a real one is not available
+- Handles WebSocket connections from the browser
+- Manages client subscriptions to specific data subjects
+- Generates realistic market data with random price movements
+- Provides CORS headers for cross-origin requests
+- Can be configured to connect to a real NEX Stream when available
+
+### DuckDB-WASM Analytics
+
+The application leverages DuckDB-WASM for in-browser analytics:
+
+- Stores all incoming data in a structured table
+- Creates analytical views with window functions for moving averages
+- Supports filtering by data source
+- Calculates real-time statistics like price changes and volatility
+- Enables complex SQL queries directly in the browser

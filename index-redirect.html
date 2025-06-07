@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BTC/USD Analytics - Loading...</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+    .loader {
+      border: 16px solid #f3f3f3;
+      border-top: 16px solid #3498db;
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      animation: spin 2s linear infinite;
+      margin: 40px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    #error-message {
+      color: red;
+      margin-top: 20px;
+      display: none;
+    }
+    #debug-info {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      text-align: left;
+      font-family: monospace;
+      display: none;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>BTC/USD Analytics Dashboard</h1>
+  <p>Loading the appropriate version for your browser...</p>
+  
+  <div class="loader" id="loader"></div>
+  
+  <div id="error-message">
+    <p>We encountered an issue loading the WebAssembly version.</p>
+    <p>Redirecting to the fallback version...</p>
+  </div>
+  
+  <div id="debug-info"></div>
+  
+  <button id="show-debug" style="display: none;">Show Debug Info</button>
+  <button id="go-to-fallback" style="display: none;">Go to Fallback Version</button>
+  
+  <script>
+    const debugInfo = document.getElementById('debug-info');
+    const errorMessage = document.getElementById('error-message');
+    const loader = document.getElementById('loader');
+    const showDebugButton = document.getElementById('show-debug');
+    const goToFallbackButton = document.getElementById('go-to-fallback');
+    
+    function log(message) {
+      console.log(message);
+      const logEntry = document.createElement('div');
+      logEntry.textContent = `${new Date().toISOString()}: ${message}`;
+      debugInfo.appendChild(logEntry);
+    }
+    
+    // Check if WebAssembly is supported
+    function checkWebAssembly() {
+      try {
+        if (typeof WebAssembly === 'object' && 
+            typeof WebAssembly.instantiate === 'function') {
+          // WebAssembly is supported
+          const module = new WebAssembly.Module(new Uint8Array([
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00
+          ]));
+          if (module instanceof WebAssembly.Module) {
+            const instance = new WebAssembly.Instance(module);
+            return instance instanceof WebAssembly.Instance;
+          }
+        }
+      } catch (e) {
+        log(`WebAssembly check error: ${e.message}`);
+        return false;
+      }
+      return false;
+    }
+    
+    // Check if the WASM file exists and is accessible
+    async function checkWasmFile() {
+      try {
+        const response = await fetch('pkg/rt_duckdb_coinbase.wasm');
+        if (response.ok) {
+          log('WASM file exists and is accessible');
+          return true;
+        } else {
+          log(`WASM file fetch failed: ${response.status} ${response.statusText}`);
+          return false;
+        }
+      } catch (e) {
+        log(`WASM file fetch error: ${e.message}`);
+        return false;
+      }
+    }
+    
+    // Check if the JS file exists and is accessible
+    async function checkJsFile() {
+      try {
+        const response = await fetch('pkg/rt_duckdb_coinbase.js');
+        if (response.ok) {
+          log('JS file exists and is accessible');
+          return true;
+        } else {
+          log(`JS file fetch failed: ${response.status} ${response.statusText}`);
+          return false;
+        }
+      } catch (e) {
+        log(`JS file fetch error: ${e.message}`);
+        return false;
+      }
+    }
+    
+    // Redirect to the appropriate version
+    async function redirectToAppropriateVersion() {
+      log('Starting checks...');
+      log(`Page URL: ${window.location.href}`);
+      log(`Base URL: ${document.baseURI}`);
+      log(`Path: ${window.location.pathname}`);
+      
+      const isWebAssemblySupported = checkWebAssembly();
+      log(`WebAssembly supported: ${isWebAssemblySupported}`);
+      
+      if (!isWebAssemblySupported) {
+        redirectToFallback('WebAssembly not supported');
+        return;
+      }
+      
+      const wasmFileExists = await checkWasmFile();
+      const jsFileExists = await checkJsFile();
+      
+      if (wasmFileExists && jsFileExists) {
+        log('All checks passed, redirecting to main app');
+        window.location.href = 'index.html';
+      } else {
+        redirectToFallback('Required files not found');
+      }
+    }
+    
+    function redirectToFallback(reason) {
+      log(`Redirecting to fallback: ${reason}`);
+      errorMessage.style.display = 'block';
+      loader.style.display = 'none';
+      
+      // Show buttons
+      showDebugButton.style.display = 'inline-block';
+      goToFallbackButton.style.display = 'inline-block';
+      
+      // Redirect after a delay
+      setTimeout(() => {
+        window.location.href = 'd3-fallback.html';
+      }, 3000);
+    }
+    
+    // Event listeners
+    showDebugButton.addEventListener('click', function() {
+      debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+      this.textContent = debugInfo.style.display === 'none' ? 'Show Debug Info' : 'Hide Debug Info';
+    });
+    
+    goToFallbackButton.addEventListener('click', function() {
+      window.location.href = 'd3-fallback.html';
+    });
+    
+    // Start the process
+    redirectToAppropriateVersion();
+  </script>
+</body>
+</html>
