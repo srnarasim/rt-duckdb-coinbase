@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Real-Time BTC/USD Analytics Dashboard (Old Structure)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    h1, h2, h3 {
+      color: #333;
+      text-align: center;
+    }
+    .chart-container {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 0.8em;
+      color: #666;
+      padding: 10px;
+      background-color: white;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <h1>BTC-USD Real-Time Analytics Dashboard (Old Structure)</h1>
+
+  <div class="chart-container">
+    <h2>Price Chart</h2>
+    <!-- This is the old structure with a single chart element -->
+    <div id="chart"></div>
+  </div>
+
+  <!-- Load Observable Plot -->
+  <script src="./static/observable-plot.min.js"></script>
+
+  <!-- Load the compatibility module directly -->
+  <script type="module">
+    // Import the compatibility module
+    import { checkStructure, legacyDrawChart } from './pkg/compatibility.js';
+    
+    // Make functions available globally
+    window.checkStructure = checkStructure;
+    window.legacyDrawChart = legacyDrawChart;
+    
+    // Generate some test data
+    const testData = [];
+    const now = new Date();
+    for (let i = 0; i < 20; i++) {
+      const time = new Date(now.getTime() - (20 - i) * 60000).toISOString();
+      const price = 30000 + Math.random() * 1000;
+      testData.push({ time, price });
+    }
+    
+    // Check the structure
+    const { isNewStructure, isOldStructure } = checkStructure();
+    console.log("Using new chart structure:", isNewStructure);
+    console.log("Using old chart structure:", isOldStructure);
+    
+    // Draw the chart
+    if (isOldStructure) {
+      legacyDrawChart(testData);
+      
+      // Update the chart every 2 seconds
+      setInterval(() => {
+        // Add a new data point
+        const lastPrice = testData[testData.length - 1].price;
+        const change = (Math.random() - 0.5) * 100;
+        const newPrice = lastPrice + change;
+        const time = new Date().toISOString();
+        
+        testData.push({ time, price: newPrice });
+        
+        // Keep data size manageable
+        if (testData.length > 100) {
+          testData.shift();
+        }
+        
+        // Update the chart
+        legacyDrawChart(testData);
+      }, 2000);
+    } else {
+      console.error("Old chart structure not found");
+    }
+  </script>
+
+  <footer>
+    <p>Real-Time BTC/USD Analytics with DuckDB-WASM + Rust + D3</p>
+    <p>Data source: Coinbase WebSocket API (Simulated)</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Testing Compatibility Module</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    h1, h2, h3 {
+      color: #333;
+      text-align: center;
+    }
+    .chart-container {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    #log {
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      margin-top: 20px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>Testing Compatibility Module</h1>
+  
+  <div class="chart-container">
+    <h2>Old Structure</h2>
+    <div id="chart"></div>
+  </div>
+  
+  <div class="chart-container">
+    <h2>New Structure</h2>
+    <div id="price-chart"></div>
+  </div>
+  
+  <div>
+    <button id="test-old">Test Old Structure</button>
+    <button id="test-new">Test New Structure</button>
+    <button id="test-compatibility">Test Compatibility Module</button>
+    <button id="clear-log">Clear Log</button>
+  </div>
+  
+  <div id="log">Console output will appear here...</div>
+  
+  <script>
+    // Redirect console.log to our log div
+    const logDiv = document.getElementById('log');
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    
+    console.log = function() {
+      const args = Array.from(arguments);
+      logDiv.textContent += '> ' + args.join(' ') + '\n';
+      logDiv.scrollTop = logDiv.scrollHeight;
+      originalConsoleLog.apply(console, arguments);
+    };
+    
+    console.error = function() {
+      const args = Array.from(arguments);
+      logDiv.textContent += '> ERROR: ' + args.join(' ') + '\n';
+      logDiv.scrollTop = logDiv.scrollHeight;
+      originalConsoleError.apply(console, arguments);
+    };
+    
+    // Generate test data
+    function generateTestData() {
+      const testData = [];
+      const now = new Date();
+      for (let i = 0; i < 20; i++) {
+        const time = new Date(now.getTime() - (20 - i) * 60000).toISOString();
+        const price = 30000 + Math.random() * 1000;
+        testData.push({ time, price });
+      }
+      return testData;
+    }
+    
+    // Test old structure
+    document.getElementById('test-old').addEventListener('click', function() {
+      console.log('Testing old structure...');
+      const chartElement = document.getElementById('chart');
+      if (!chartElement) {
+        console.error('Chart element not found');
+        return;
+      }
+      console.log('Old structure chart element found');
+      
+      // Draw a simple chart
+      chartElement.innerHTML = '<div style="background-color: #f5f5f5; padding: 20px; text-align: center;">Old Structure Chart</div>';
+      console.log('Drew chart in old structure');
+    });
+    
+    // Test new structure
+    document.getElementById('test-new').addEventListener('click', function() {
+      console.log('Testing new structure...');
+      const chartElement = document.getElementById('price-chart');
+      if (!chartElement) {
+        console.error('Price chart element not found');
+        return;
+      }
+      console.log('New structure chart element found');
+      
+      // Draw a simple chart
+      chartElement.innerHTML = '<div style="background-color: #f5f5f5; padding: 20px; text-align: center;">New Structure Chart</div>';
+      console.log('Drew chart in new structure');
+    });
+    
+    // Test compatibility module
+    document.getElementById('test-compatibility').addEventListener('click', function() {
+      console.log('Testing compatibility module...');
+      
+      // Define compatibility functions
+      const checkStructure = function() {
+        const isNewStructure = document.getElementById('price-chart') !== null;
+        const isOldStructure = document.getElementById('chart') !== null;
+        
+        console.log("Using new chart structure:", isNewStructure);
+        console.log("Using old chart structure:", isOldStructure);
+        
+        return { isNewStructure, isOldStructure };
+      };
+      
+      const legacyDrawChart = function(data) {
+        const chartElement = document.getElementById('chart');
+        if (!chartElement) {
+          console.error('Chart element not found');
+          return;
+        }
+        
+        // Draw a simple chart
+        chartElement.innerHTML = '<div style="background-color: #f5f5f5; padding: 20px; text-align: center;">Legacy Chart with ' + data.length + ' data points</div>';
+        console.log('Drew legacy chart with data');
+      };
+      
+      // Check structure
+      const { isNewStructure, isOldStructure } = checkStructure();
+      
+      // Draw chart based on structure
+      if (isOldStructure) {
+        console.log('Using legacy chart drawing function');
+        legacyDrawChart(generateTestData());
+      } else if (isNewStructure) {
+        console.log('Using new chart drawing function');
+        const chartElement = document.getElementById('price-chart');
+        chartElement.innerHTML = '<div style="background-color: #f5f5f5; padding: 20px; text-align: center;">New Chart with data</div>';
+      } else {
+        console.error('No compatible chart structure found');
+      }
+    });
+    
+    // Clear log
+    document.getElementById('clear-log').addEventListener('click', function() {
+      logDiv.textContent = 'Console output will appear here...\n';
+    });
+  </script>
+</body>
+</html>
