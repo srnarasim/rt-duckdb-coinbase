@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Test</title>
+</head>
+<body>
+  <h1>Debug Test</h1>
+  <div id="status">Loading...</div>
+  
+  <script>
+    console.log("🔍 Debug script starting...");
+    
+    // Test basic functionality
+    document.getElementById('status').textContent = 'Script loaded';
+    
+    // Test DuckDB initialization
+    async function testInit() {
+      try {
+        console.log("🦆 Testing DuckDB initialization...");
+        
+        // Skip DuckDB and go straight to mock
+        console.warn("⚠️ Skipping DuckDB, using mock mode");
+        
+        // Simulate mock DuckDB
+        window.duckdbInstance = {
+          isReal: false,
+          db: {
+            connect: async () => ({
+              query: async () => ({ toArray: () => [] })
+            })
+          }
+        };
+        
+        // Dispatch ready event
+        window.dispatchEvent(new CustomEvent('duckdb-ready', {
+          detail: { type: 'mock', message: 'Mock DuckDB ready' }
+        }));
+        
+        document.getElementById('status').textContent = 'Mock DuckDB ready!';
+        console.log("✅ Mock DuckDB initialized successfully");
+        
+      } catch (error) {
+        console.error("❌ Error in test:", error);
+        document.getElementById('status').textContent = 'Error: ' + error.message;
+      }
+    }
+    
+    // Start test
+    testInit();
+  </script>
+</body>
+</html>

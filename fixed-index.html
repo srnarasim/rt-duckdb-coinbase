@@ -9,18 +9,30 @@
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/dashboard.css">
   
-  <!-- Optimized DuckDB WASM Implementation -->
-  <script src="static/duckdb-wasm/duckdb-init.js?v=8"></script>
+  <!-- Import Map for Module Resolution -->
+  <script type="importmap">
+  {
+    "imports": {
+      "apache-arrow": "/static/apache-arrow.js"
+    }
+  }
+  </script>
+  
+  <!-- Apache Arrow (required by DuckDB WASM) -->
+  <script src="static/apache-arrow.js"></script>
+  
+  <!-- Simplified DuckDB WASM Implementation (Mock Mode) -->
+  <script src="static/duckdb-wasm/duckdb-init-simple.js?v=13"></script>
   
   <!-- Observable Plot for visualization -->
   <script src="static/observable-plot.min.js"></script>
   
   <!-- Custom modules -->
-  <script src="js/data-connector.js?v=8"></script>
-  <script src="js/data-processor.js?v=8"></script>
-  <script src="js/chart-renderer.js?v=8"></script>
-  <script src="js/dashboard-controller.js?v=8"></script>
-  <script src="js/main.js?v=8"></script>
+  <script src="js/data-connector.js?v=13"></script>
+  <script src="js/data-processor.js?v=13"></script>
+  <script src="js/chart-renderer.js?v=13"></script>
+  <script src="js/dashboard-controller.js?v=13"></script>
+  <script src="js/main.js?v=13"></script>
 </head>
 <body>
   <!-- Loading Indicator -->

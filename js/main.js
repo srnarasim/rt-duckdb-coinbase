@@ -83,12 +83,12 @@ function waitForDuckDBReady() {
     window.addEventListener('duckdb-ready', onReady);
     window.addEventListener('duckdb-error', onError);
     
-    // Timeout after 15 seconds (DuckDB WASM needs time to download and compile)
+    // Timeout after 8 seconds (faster fallback to mock mode)
     setTimeout(() => {
       window.removeEventListener('duckdb-ready', onReady);
       window.removeEventListener('duckdb-error', onError);
       reject(new Error("Timeout waiting for DuckDB to initialize"));
-    }, 15000);
+    }, 8000);
   });
 }
 
