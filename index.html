@@ -3,89 +3,156 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BTC/USD Analytics Dashboard (GitHub Pages)</title>
+  <title>Real-Time BTC/USD Analytics Dashboard</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      text-align: center;
-    }
-    .button-container {
-      margin: 40px 0;
-    }
-    .button {
-      display: inline-block;
-      padding: 15px 30px;
-      margin: 0 10px;
-      background-color: #4CAF50;
-      color: white;
-      text-decoration: none;
-      border-radius: 5px;
-      font-weight: bold;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .button:hover {
-      background-color: #45a049;
-    }
-    .button.secondary {
-      background-color: #3498db;
-    }
-    .button.secondary:hover {
-      background-color: #2980b9;
-    }
-    .info-box {
-      background-color: #f8f9fa;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      padding: 20px;
-      margin: 20px 0;
-      text-align: left;
-    }
-    h1, h2 {
-      color: #333;
-    }
-    footer {
-      margin-top: 40px;
-      font-size: 0.8em;
-      color: #666;
-    }
-  </style>
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/dashboard.css">
+  
+  <!-- Real DuckDB WASM Implementation (CORS-safe with local files) -->
+  <script src="static/duckdb-wasm/duckdb-init-real.js?v=14"></script>
+  
+  <!-- Observable Plot for visualization -->
+  <script src="static/observable-plot.min.js"></script>
+  
+  <!-- Custom modules -->
+  <script src="js/data-connector.js?v=14"></script>
+  <script src="js/data-processor.js?v=14"></script>
+  <script src="js/chart-renderer.js?v=14"></script>
+  <script src="js/dashboard-controller.js?v=14"></script>
+  <script src="js/main.js?v=14"></script>
 </head>
 <body>
-  <h1>BTC/USD Analytics Dashboard</h1>
-  <p>Choose the version that works best for your browser:</p>
-  
-  <div class="button-container">
-    <a href="d3-fallback.html" class="button">D3 Version</a>
-    <a href="standalone.html" class="button secondary">WebAssembly Version</a>
+  <!-- Loading Indicator -->
+  <div id="loading-indicator" class="loading-overlay">
+    <div>
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading Dashboard...</div>
+    </div>
   </div>
   
-  <div class="info-box">
-    <h2>About This Application</h2>
-    <p>This application demonstrates real-time BTC/USD price analytics using different technologies:</p>
-    <ul>
-      <li><strong>D3 Version:</strong> Uses D3.js for visualization with simulated data. Works in all modern browsers.</li>
-      <li><strong>WebAssembly Version:</strong> Uses Rust compiled to WebAssembly with DuckDB-WASM for in-browser analytics. Requires WebAssembly support.</li>
-    </ul>
-    <p>Both versions provide real-time price charts and analytics for Bitcoin price data.</p>
+  <!-- Error Message -->
+  <div id="error-message" class="error-message"></div>
+  
+  <!-- Header -->
+  <header>
+    <h1>BTC-USD Real-Time Analytics Dashboard</h1>
+    
+    <!-- Controls -->
+    <div class="controls">
+      <div class="control-group">
+        <label for="timeframe-select">Timeframe:</label>
+        <select id="timeframe-select">
+          <option value="1">1 Minute</option>
+          <option value="5" selected>5 Minutes</option>
+          <option value="15">15 Minutes</option>
+          <option value="60">1 Hour</option>
+          <option value="1440">All Data</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="aggregation-select">Aggregation:</label>
+        <select id="aggregation-select">
+          <option value="none" selected>None</option>
+          <option value="1">1 Second</option>
+          <option value="5">5 Seconds</option>
+          <option value="10">10 Seconds</option>
+          <option value="30">30 Seconds</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <button id="reset-zoom-button">Reset Zoom</button>
+        <button id="pause-button">Pause</button>
+      </div>
+    </div>
+    
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-item">
+        <span class="status-label">Connection:</span>
+        <span id="connection-status" class="connection-status">Connected</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">Trades Received:</span>
+        <span id="trade-counter">0</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">Last Update:</span>
+        <span id="last-update-time">-</span>
+      </div>
+    </div>
+  </header>
+  
+  <!-- Stats Container -->
+  <div class="stats-container">
+    <div class="stat-box">
+      <div id="current-price">$0.00</div>
+      <div class="stat-label">Current Price</div>
+    </div>
+    
+    <div class="stat-box">
+      <div id="change-percent">0.00%</div>
+      <div class="stat-label">Change (Session)</div>
+    </div>
+    
+    <div class="stat-box">
+      <div id="session-high">$0.00</div>
+      <div class="stat-label">Session High</div>
+    </div>
+    
+    <div class="stat-box">
+      <div id="session-low">$0.00</div>
+      <div class="stat-label">Session Low</div>
+    </div>
   </div>
   
-  <div class="info-box">
-    <h2>Troubleshooting</h2>
-    <p>If you encounter issues with the WebAssembly version:</p>
-    <ul>
-      <li>Make sure your browser supports WebAssembly</li>
-      <li>Try using the D3 version instead</li>
-      <li>Check the browser console for error messages</li>
-    </ul>
+  <!-- Charts Container -->
+  <div class="charts-container">
+    <!-- Price Chart -->
+    <div class="chart-box full-width">
+      <h2>Price Chart</h2>
+      <div id="price-chart" class="chart"></div>
+    </div>
+    
+    <!-- Price Volatility -->
+    <div class="chart-box">
+      <h2>Price Volatility</h2>
+      <div id="volatility-chart" class="chart"></div>
+    </div>
+    
+    <!-- Price Distribution -->
+    <div class="chart-box">
+      <h2>Price Distribution</h2>
+      <div id="distribution-chart" class="chart"></div>
+    </div>
+    
+    <!-- Moving Averages -->
+    <div class="chart-box full-width">
+      <h2>Moving Averages</h2>
+      <div id="moving-averages-chart" class="chart"></div>
+    </div>
+    
+    <!-- Volume Profile -->
+    <div class="chart-box">
+      <h2>Volume Profile</h2>
+      <div id="volume-profile-chart" class="chart"></div>
+    </div>
+    
+    <!-- Price Change Heatmap -->
+    <div class="chart-box">
+      <h2>Price Change Heatmap</h2>
+      <div id="heatmap-chart" class="chart"></div>
+    </div>
   </div>
   
+  <!-- Footer -->
   <footer>
     <p>Real-Time BTC/USD Analytics with DuckDB-WASM + Rust + D3</p>
-    <p><a href="https://github.com/srnarasim/rt-duckdb-coinbase">View on GitHub</a></p>
+    <p>Data source: Coinbase WebSocket API (via NEX Stream)</p>
   </footer>
 </body>
 </html>
