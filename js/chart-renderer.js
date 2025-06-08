@@ -9,6 +9,14 @@ class ChartRenderer {
     this.chart = null;
   }
   
+  // Utility function to safely convert BigInt to Number
+  safeNumber(value) {
+    if (typeof value === 'bigint') {
+      return Number(value);
+    }
+    return value;
+  }
+  
   clearChart() {
     if (this.container) {
       this.container.innerHTML = '';
@@ -23,10 +31,10 @@ class ChartRenderer {
       return;
     }
     
-    // Format data for plotting
+    // Format data for plotting (convert BigInt to Number)
     const plotData = data.map(d => ({
       time: new Date(d.timestamp),
-      price: d.price
+      price: Number(d.price)
     }));
     
     // Create price chart using Observable Plot (mock implementation)
@@ -70,10 +78,12 @@ class ChartRenderer {
       return;
     }
     
-    // Calculate price changes
+    // Calculate price changes (convert BigInt to Number)
     const changes = [];
     for (let i = 1; i < data.length; i++) {
-      const pctChange = ((data[i].price - data[i-1].price) / data[i-1].price) * 100;
+      const currentPrice = Number(data[i].price);
+      const previousPrice = Number(data[i-1].price);
+      const pctChange = ((currentPrice - previousPrice) / previousPrice) * 100;
       changes.push({
         time: new Date(data[i].timestamp),
         change: pctChange
@@ -138,12 +148,12 @@ class ChartRenderer {
       return;
     }
     
-    // Format data for histogram
+    // Format data for histogram (convert BigInt to Number)
     const plotData = distributionData.map(d => ({
-      binStart: d.bin_start,
-      binEnd: d.bin_end,
-      count: d.count,
-      binMiddle: (d.bin_start + d.bin_end) / 2
+      binStart: Number(d.bin_start),
+      binEnd: Number(d.bin_end),
+      count: Number(d.count),
+      binMiddle: (Number(d.bin_start) + Number(d.bin_end)) / 2
     }));
     
     // Create distribution chart
@@ -193,13 +203,13 @@ class ChartRenderer {
       return;
     }
     
-    // Format data for plotting
+    // Format data for plotting (convert BigInt to Number)
     const plotData = data.map(d => ({
       time: new Date(d.timestamp),
-      price: d.price,
-      ma10: d.ma_10,
-      ma20: d.ma_20,
-      ma50: d.ma_50
+      price: Number(d.price),
+      ma10: Number(d.ma_10),
+      ma20: Number(d.ma_20),
+      ma50: Number(d.ma_50)
     }));
     
     // Create moving averages chart
@@ -287,9 +297,9 @@ class ChartRenderer {
       return;
     }
     
-    // Format volume data
-    const buyVolume = volumeData.find(d => d.side === 'buy')?.volume || 0;
-    const sellVolume = volumeData.find(d => d.side === 'sell')?.volume || 0;
+    // Format volume data (convert BigInt to Number)
+    const buyVolume = Number(volumeData.find(d => d.side === 'buy')?.volume || 0);
+    const sellVolume = Number(volumeData.find(d => d.side === 'sell')?.volume || 0);
     const totalVolume = buyVolume + sellVolume;
     
     const volumePlotData = [
@@ -337,14 +347,16 @@ class ChartRenderer {
       return;
     }
     
-    // Calculate price changes for heatmap
+    // Calculate price changes for heatmap (convert BigInt to Number)
     const changes = [];
     for (let i = 1; i < data.length; i++) {
-      const pctChange = ((data[i].price - data[i-1].price) / data[i-1].price) * 100;
+      const currentPrice = Number(data[i].price);
+      const previousPrice = Number(data[i-1].price);
+      const pctChange = ((currentPrice - previousPrice) / previousPrice) * 100;
       changes.push({
         time: new Date(data[i].timestamp),
         change: pctChange,
-        price: data[i].price
+        price: currentPrice
       });
     }
     
@@ -358,7 +370,7 @@ class ChartRenderer {
     const timeRange = maxTime - minTime;
     const timeStep = timeRange / timeIntervals;
     
-    const prices = data.map(d => d.price);
+    const prices = data.map(d => Number(d.price));
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
     const priceRange = maxPrice - minPrice;
