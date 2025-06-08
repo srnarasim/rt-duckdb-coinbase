@@ -96,23 +96,42 @@ class DataProcessor {
     
     this.initPromise = new Promise(async (resolve, reject) => {
       try {
-        // Wait for DuckDB to be ready (either real or mock)
-        await this.waitForDuckDB();
-        
-        // Use the globally available DuckDB instance
-        this.db = window.duckdbInstance;
-        this.isRealDuckDB = window.duckdbReal || false;
-        
-        console.log(`📊 DataProcessor using ${this.isRealDuckDB ? 'Real' : 'Mock'} DuckDB`);
-        
-        // Create database schema
-        await this.createSchema();
+        // Try to wait for DuckDB to be ready
+        try {
+          await this.waitForDuckDB();
+          
+          // Use the globally available DuckDB instance
+          this.db = window.duckdbInstance;
+          this.isRealDuckDB = window.duckdbReal || false;
+          
+          console.log(`📊 DataProcessor using ${this.isRealDuckDB ? 'Real' : 'Mock'} DuckDB`);
+          
+          // Create database schema
+          await this.createSchema();
+          
+        } catch (duckdbError) {
+          console.warn("⚠️ DuckDB initialization failed, using simulation mode:", duckdbError.message);
+          
+          // Fallback to simulation mode
+          this.db = {
+            isSimulation: true,
+            query: async () => ({ toArray: () => [] }),
+            connect: async () => ({
+              query: async () => ({ toArray: () => [] }),
+              close: () => {}
+            })
+          };
+          this.isRealDuckDB = false;
+          this.isSimulation = true;
+          
+          console.log("🎭 DataProcessor using simulation mode");
+        }
         
         console.log("✅ DataProcessor initialized successfully");
         this.initialized = true;
         resolve();
       } catch (e) {
-        console.error("Error initializing DuckDB:", e);
+        console.error("❌ Critical error initializing DataProcessor:", e);
         reject(e);
       }
     });
@@ -164,6 +183,11 @@ class DataProcessor {
     // Trim buffer if it gets too large
     if (this.dataBuffer.length > this.bufferSize) {
       this.dataBuffer = this.dataBuffer.slice(-this.bufferSize);
+    }
+    
+    // In simulation mode, just keep the data in memory
+    if (this.isSimulation) {
+      return;
     }
     
     // Process in batches to avoid too many DB operations
@@ -287,6 +311,11 @@ class DataProcessor {
   
   async getPriceData(timeframe, aggregation = 'none') {
     await this.initialize();
+    
+    // In simulation mode, return data from buffer
+    if (this.isSimulation) {
+      return this.getSimulatedPriceData(timeframe, aggregation);
+    }
     
     // Calculate time window
     const now = Date.now();
@@ -489,5 +518,23 @@ class DataProcessor {
       console.error("Error getting moving averages:", e);
       return [];
     }
+  }
+  
+  getSimulatedPriceData(timeframe, aggregation = 'none') {
+    // Return data from buffer for simulation mode
+    const now = Date.now();
+    const timeWindow = timeframe * 60 * 1000;
+    const startTime = now - timeWindow;
+    
+    // Filter buffer data by timeframe
+    const filteredData = this.dataBuffer
+      .filter(item => item.timestamp >= startTime)
+      .map(item => ({
+        timestamp: item.timestamp,
+        price: item.data.price
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
+    
+    return filteredData;
   }
 }

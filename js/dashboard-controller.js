@@ -24,7 +24,7 @@ class DashboardController {
   }
   
   async initialize() {
-    console.log("Initializing dashboard...");
+    console.log("🚀 Initializing dashboard...");
     
     // Initialize data processor
     await this.dataProcessor.initialize();
@@ -32,16 +32,56 @@ class DashboardController {
     // Initialize UI event listeners
     this.initializeEventListeners();
     
-    // For demo purposes, skip WebSocket connection and use simulated data
-    console.log("Skipping WebSocket connection for demo - using simulated data");
-    
-    // Generate some initial demo data
-    this.generateDemoData();
+    // Initialize live data connection
+    await this.initializeLiveData();
     
     // Start update loop
     this.startUpdateLoop();
     
-    console.log("Dashboard initialized");
+    console.log("✅ Dashboard initialized");
+  }
+  
+  async initializeLiveData() {
+    console.log("🔌 Initializing live data connections...");
+    
+    // Create data connector with callback
+    this.dataConnector = new DataConnector((data) => {
+      this.handleLiveData(data);
+    });
+    
+    // Connect to multiple exchanges for redundancy
+    // Start with Coinbase (most reliable), add others as fallback
+    this.dataConnector.connect(['coinbase']);
+    
+    // Add Binance after 5 seconds if we want multiple feeds
+    setTimeout(() => {
+      if (this.dataConnector.getConnectionInfo().connected) {
+        console.log("🔌 Adding Binance as secondary data source...");
+        this.dataConnector.connect(['binance']);
+      }
+    }, 5000);
+  }
+  
+  handleLiveData(data) {
+    try {
+      // Update trade counter
+      this.tradeCount++;
+      this.updateTradeCounter();
+      
+      // Update last update time
+      this.lastUpdateTime = Date.now();
+      this.updateLastUpdateTime();
+      
+      // Add data to processor
+      this.dataProcessor.addData(data);
+      
+      // Log trade info (throttled)
+      if (this.tradeCount % 10 === 0) {
+        console.log(`📊 Trade #${this.tradeCount}: ${data.data.exchange} - $${data.data.price.toFixed(2)} (${data.data.size.toFixed(4)} BTC)`);
+      }
+    } catch (error) {
+      console.error("❌ Error handling live data:", error);
+    }
   }
   
   initializeEventListeners() {
@@ -191,6 +231,21 @@ class DashboardController {
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
+    }
+  }
+  
+  updateTradeCounter() {
+    const tradeCounterElement = document.getElementById("trade-counter");
+    if (tradeCounterElement) {
+      tradeCounterElement.textContent = this.tradeCount.toLocaleString();
+    }
+  }
+  
+  updateLastUpdateTime() {
+    const lastUpdateElement = document.getElementById("last-update-time");
+    if (lastUpdateElement) {
+      const now = new Date(this.lastUpdateTime);
+      lastUpdateElement.textContent = now.toLocaleTimeString();
     }
   }
   
