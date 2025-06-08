@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real DuckDB WASM Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+    .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+    .btn-primary { background-color: #007bff; color: white; }
+    .btn-success { background-color: #28a745; color: white; }
+  </style>
+</head>
+<body>
+  <h1>🦆 Real DuckDB WASM Test</h1>
+  
+  <div id="status" class="status info">
+    Loading DuckDB WASM...
+  </div>
+  
+  <div id="controls" style="display: none;">
+    <button class="btn-primary" onclick="testBasicQuery()">Test Basic Query</button>
+    <button class="btn-primary" onclick="testCreateTable()">Create Table</button>
+    <button class="btn-primary" onclick="testInsertData()">Insert Data</button>
+    <button class="btn-primary" onclick="testSelectData()">Select Data</button>
+    <button class="btn-success" onclick="runFullTest()">Run Full Test</button>
+  </div>
+  
+  <div id="results"></div>
+  
+  <!-- Load DuckDB WASM -->
+  <script type="module">
+    import * as duckdb from './static/duckdb-wasm/duckdb-browser.mjs';
+    
+    let db = null;
+    let conn = null;
+    
+    async function initializeDuckDB() {
+      try {
+        updateStatus("Initializing DuckDB WASM...", "info");
+        
+        // Define local bundles
+        const LOCAL_BUNDLES = {
+          mvp: {
+            mainModule: '/static/duckdb-wasm/duckdb-mvp.wasm',
+            mainWorker: '/static/duckdb-wasm/duckdb-browser-mvp.worker.js'
+          },
+          eh: {
+            mainModule: '/static/duckdb-wasm/duckdb-eh.wasm',
+            mainWorker: '/static/duckdb-wasm/duckdb-browser-eh.worker.js'
+          }
+        };
+        
+        // Select bundle (start with MVP for compatibility)
+        const selectedBundle = LOCAL_BUNDLES.mvp;
+        updateStatus(`Using MVP bundle for maximum compatibility`, "info");
+        
+        // Create worker and database
+        const worker = new Worker(selectedBundle.mainWorker);
+        const logger = new duckdb.ConsoleLogger();
+        db = new duckdb.AsyncDuckDB(logger, worker);
+        
+        // Instantiate DuckDB
+        await db.instantiate(selectedBundle.mainModule);
+        
+        // Create connection
+        conn = await db.connect();
+        
+        // Make available globally
+        window.duckdb = duckdb;
+        window.duckdbInstance = db;
+        window.duckdbConnection = conn;
+        
+        updateStatus("✅ Real DuckDB WASM initialized successfully!", "success");
+        document.getElementById('controls').style.display = 'block';
+        
+      } catch (error) {
+        updateStatus(`❌ Failed to initialize DuckDB: ${error.message}`, "error");
+        console.error("DuckDB initialization error:", error);
+      }
+    }
+    
+    function updateStatus(message, type) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+    }
+    
+    function addResult(title, content, type = 'info') {
+      const resultsDiv = document.getElementById('results');
+      const resultDiv = document.createElement('div');
+      resultDiv.innerHTML = `
+        <h3>${title}</h3>
+        <div class="status ${type}">
+          <pre>${typeof content === 'object' ? JSON.stringify(content, null, 2) : content}</pre>
+        </div>
+      `;
+      resultsDiv.appendChild(resultDiv);
+    }
+    
+    // Test functions
+    window.testBasicQuery = async function() {
+      try {
+        const result = await conn.query("SELECT 42 as answer, 'Hello DuckDB!' as message");
+        const data = result.toArray();
+        addResult("Basic Query Test", data, "success");
+      } catch (error) {
+        addResult("Basic Query Test", `Error: ${error.message}`, "error");
+      }
+    };
+    
+    window.testCreateTable = async function() {
+      try {
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS trades (
+            id INTEGER PRIMARY KEY,
+            timestamp TIMESTAMP,
+            price DECIMAL(18,8),
+            size DECIMAL(18,8),
+            side VARCHAR(4),
+            exchange VARCHAR(20),
+            pair VARCHAR(10)
+          )
+        `);
+        addResult("Create Table Test", "Table 'trades' created successfully", "success");
+      } catch (error) {
+        addResult("Create Table Test", `Error: ${error.message}`, "error");
+      }
+    };
+    
+    window.testInsertData = async function() {
+      try {
+        await conn.query(`
+          INSERT INTO trades (timestamp, price, size, side, exchange, pair)
+          VALUES 
+            (CURRENT_TIMESTAMP, 31000.50, 0.1, 'buy', 'coinbase', 'BTC-USD'),
+            (CURRENT_TIMESTAMP, 31001.25, 0.05, 'sell', 'coinbase', 'BTC-USD'),
+            (CURRENT_TIMESTAMP, 30999.75, 0.2, 'buy', 'coinbase', 'BTC-USD')
+        `);
+        addResult("Insert Data Test", "3 trades inserted successfully", "success");
+      } catch (error) {
+        addResult("Insert Data Test", `Error: ${error.message}`, "error");
+      }
+    };
+    
+    window.testSelectData = async function() {
+      try {
+        const result = await conn.query(`
+          SELECT 
+            COUNT(*) as trade_count,
+            AVG(price) as avg_price,
+            MIN(price) as min_price,
+            MAX(price) as max_price
+          FROM trades
+        `);
+        const data = result.toArray();
+        addResult("Select Data Test", data, "success");
+      } catch (error) {
+        addResult("Select Data Test", `Error: ${error.message}`, "error");
+      }
+    };
+    
+    window.runFullTest = async function() {
+      document.getElementById('results').innerHTML = '';
+      await testBasicQuery();
+      await testCreateTable();
+      await testInsertData();
+      await testSelectData();
+      
+      // Advanced test
+      try {
+        const result = await conn.query(`
+          SELECT 
+            side,
+            COUNT(*) as count,
+            AVG(price) as avg_price,
+            SUM(size) as total_size
+          FROM trades 
+          GROUP BY side
+          ORDER BY side
+        `);
+        const data = result.toArray();
+        addResult("Advanced Analytics Test", data, "success");
+      } catch (error) {
+        addResult("Advanced Analytics Test", `Error: ${error.message}`, "error");
+      }
+    };
+    
+    // Initialize when page loads
+    initializeDuckDB();
+  </script>
+</body>
+</html>
