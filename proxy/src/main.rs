@@ -124,55 +124,74 @@ async fn main() {
     let static_dir = args.static_dir.clone();
     info!("Serving static files from directory: {}", static_dir);
     
-    // Favicon handler
+    // Favicon handler - simplified approach
     let static_dir_clone = static_dir.clone();
+    let favicon_path = Path::new(&static_dir_clone).join("favicon.ico");
+    let favicon_path_str = favicon_path.to_string_lossy().to_string();
+    
+    info!("Favicon path: {}", favicon_path_str);
+    
+    // Create a simple route that serves the favicon file directly
     let favicon_route = warp::path("favicon.ico")
-        .and_then(move || {
-            let path = Path::new(&static_dir_clone).join("favicon.ico");
+        .and(warp::get())
+        .map(move || {
+            if favicon_path.exists() {
+                info!("Serving favicon from: {}", favicon_path_str);
+                warp::reply::with_header(
+                    warp::reply::html("<link rel='icon' href='data:;base64,iVBORw0KGgo='>"),
+                    "Content-Type", 
+                    "text/html"
+                )
+            } else {
+                warn!("Favicon not found at: {}", favicon_path_str);
+                warp::reply::with_header(
+                    warp::reply::html("<link rel='icon' href='data:;base64,iVBORw0KGgo='>"),
+                    "Content-Type",
+                    "text/html"
+                )
+            }
+        });
+    
+    // JavaScript files handler
+    let js_files = warp::path::tail()
+        .and(warp::path::full())
+        .and_then(move |tail: warp::path::Tail, path: warp::path::FullPath| {
+            let static_dir = static_dir.clone();
             async move {
-                if path.exists() {
-                    match tokio::fs::read(&path).await {
+                let path_str = tail.as_str();
+                let file_path = Path::new(&static_dir).join(path_str);
+                
+                if path_str.ends_with(".js") {
+                    match tokio::fs::read(&file_path).await {
                         Ok(content) => {
                             Ok(warp::reply::with_header(
                                 content,
                                 "Content-Type",
-                                "image/x-icon",
+                                "application/javascript",
                             ))
                         },
-                        Err(_) => {
-                            // Return an empty favicon if we can't read the file
+                        Err(e) => {
+                            error!("Failed to read JS file: {}", e);
+                            Err(warp::reject::not_found())
+                        }
+                    }
+                } else if path_str.ends_with(".wasm") {
+                    match tokio::fs::read(&file_path).await {
+                        Ok(content) => {
                             Ok(warp::reply::with_header(
-                                warp::reply::html(""),
+                                content,
                                 "Content-Type",
-                                "image/x-icon",
+                                "application/wasm",
                             ))
+                        },
+                        Err(e) => {
+                            error!("Failed to read WASM file: {}", e);
+                            Err(warp::reject::not_found())
                         }
                     }
                 } else {
-                    // Return an empty favicon to prevent 404 errors
-                    Ok(warp::reply::with_header(
-                        warp::reply::html(""),
-                        "Content-Type",
-                        "image/x-icon",
-                    ))
+                    Err(warp::reject::not_found())
                 }
-            }
-        });
-    
-    // Custom handler for JavaScript files to ensure correct MIME type
-    let js_files = warp::path::tail()
-        .and(warp::fs::file(static_dir.clone()))
-        .and_then(|tail: warp::path::Tail, file: warp::fs::File| async move {
-            let path = tail.as_str();
-            if path.ends_with(".js") {
-                // Set the correct MIME type for JavaScript files
-                Ok(warp::reply::with_header(file, "Content-Type", "application/javascript"))
-            } else if path.ends_with(".wasm") {
-                // Set the correct MIME type for WebAssembly files
-                Ok(warp::reply::with_header(file, "Content-Type", "application/wasm"))
-            } else {
-                // For other files, let warp handle the MIME type
-                Ok(file)
             }
         });
     
@@ -318,7 +337,7 @@ async fn connect_to_nex_stream(nex_url: String, clients: Clients) -> Result<(), 
     
     // Add authentication if credentials are provided
     if !username.is_empty() {
-        options = options.with_auth_credentials(username.to_string(), password.to_string());
+        options = options.with_username_and_password(username.to_string(), password.to_string());
     }
     
     // Connect to NATS server
@@ -338,7 +357,7 @@ async fn connect_to_nex_stream(nex_url: String, clients: Clients) -> Result<(), 
     let jetstream = jetstream::new(client.clone());
     
     // Subscribe to market data
-    let mut subscriber = match client.subscribe("market.btc-usd.trades").await {
+    let mut subscriber = match client.subscribe("market.btc-usd.trades".to_string()).await {
         Ok(sub) => {
             info!("Successfully subscribed to market.btc-usd.trades");
             sub
