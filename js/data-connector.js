@@ -116,6 +116,11 @@ class DataConnector {
       
       socket.onerror = (error) => {
         console.error(`❌ ${exchange.name} WebSocket error:`, error);
+        
+        // Specific handling for common WebSocket errors
+        if (error.type === 'error') {
+          console.warn(`⚠️ ${exchange.name} connection failed - this is normal if the exchange is unreachable`);
+        }
       };
     } catch (e) {
       console.error(`❌ Error creating WebSocket for ${exchange.name}:`, e);

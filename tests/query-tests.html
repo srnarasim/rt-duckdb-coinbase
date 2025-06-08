@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modular Query Tests</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+    .success { background-color: #d4edda; color: #155724; }
+    .error { background-color: #f8d7da; color: #721c24; }
+    .info { background-color: #d1ecf1; color: #0c5460; }
+    .warning { background-color: #fff3cd; color: #856404; }
+    pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+    button { padding: 10px 20px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background-color: #0056b3; }
+    button:disabled { background-color: #6c757d; cursor: not-allowed; }
+    .query-result { max-height: 300px; overflow-y: auto; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .stat-card { padding: 10px; background-color: #f8f9fa; border-radius: 5px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Modular Query System Tests</h1>
+  
+  <div class="test-section info">
+    <h2>Test Status</h2>
+    <div id="status">Initializing DuckDB...</div>
+    <div class="stats-grid" id="queryStats" style="margin-top: 10px;"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test Controls</h2>
+    <button onclick="testBasicQueries()" id="basicBtn">Test Basic Queries</button>
+    <button onclick="testTradeStats()" id="statsBtn">Test Trade Stats</button>
+    <button onclick="testPriceData()" id="priceBtn">Test Price Data</button>
+    <button onclick="testVolumeAnalysis()" id="volumeBtn">Test Volume Analysis</button>
+    <button onclick="testVolatilityAnalysis()" id="volatilityBtn">Test Volatility Analysis</button>
+    <button onclick="runAllTests()" id="allBtn">Run All Tests</button>
+    <button onclick="clearResults()">Clear Results</button>
+  </div>
+  
+  <div id="results"></div>
+  
+  <!-- Load DuckDB and query modules -->
+  <script src="../static/duckdb-wasm/duckdb-init-modern.js?v=2"></script>
+  <script src="../queries/trade-stats.js"></script>
+  <script src="../queries/price-data.js"></script>
+  <script src="../queries/volume-analysis.js"></script>
+  <script src="../queries/volatility-analysis.js"></script>
+  <script src="../js/query-manager.js"></script>
+  
+  <script>
+    let queryManager = null;
+    const statusDiv = document.getElementById('status');
+    const resultsDiv = document.getElementById('results');
+    const queryStatsDiv = document.getElementById('queryStats');
+    
+    function updateStatus(message, type = 'info') {
+      statusDiv.innerHTML = `<span class="${type}">${message}</span>`;
+    }
+    
+    function updateQueryStats() {
+      if (!queryManager) return;
+      
+      const stats = queryManager.getStats();
+      queryStatsDiv.innerHTML = `
+        <div class="stat-card">
+          <strong>Total Queries</strong><br>
+          ${stats.totalQueries}
+        </div>
+        <div class="stat-card">
+          <strong>Avg Time</strong><br>
+          ${stats.averageExecutionTime.toFixed(2)}ms
+        </div>
+        <div class="stat-card">
+          <strong>Success Rate</strong><br>
+          ${stats.successRate.toFixed(1)}%
+        </div>
+        <div class="stat-card">
+          <strong>Errors</strong><br>
+          ${stats.errorCount}
+        </div>
+      `;
+    }
+    
+    function addTestResult(testName, result, details = '', isError = false) {
+      const div = document.createElement('div');
+      div.className = `test-section ${isError ? 'error' : 'success'}`;
+      div.innerHTML = `
+        <h3>${testName}</h3>
+        <p><strong>Result:</strong> ${result}</p>
+        ${details ? `<div class="query-result"><pre>${details}</pre></div>` : ''}
+      `;
+      resultsDiv.appendChild(div);
+      updateQueryStats();
+    }
+    
+    function clearResults() {
+      resultsDiv.innerHTML = '';
+      if (queryManager) {
+        queryManager.clearStats();
+        updateQueryStats();
+      }
+    }
+    
+    async function setupTestData() {
+      if (!queryManager) return false;
+      
+      try {
+        // Create trades table if it doesn't exist
+        await queryManager.executeQuery(`
+          CREATE TABLE IF NOT EXISTS trades (
+            timestamp TIMESTAMP,
+            price DECIMAL(10,2),
+            size DECIMAL(10,4),
+            side VARCHAR,
+            exchange VARCHAR,
+            pair VARCHAR
+          )
+        `, 'create_table');
+        
+        // Check if we have data
+        const countResult = await queryManager.executeQuery('SELECT COUNT(*) as count FROM trades', 'count_check');
+        const count = countResult[0]?.count || 0;
+        
+        if (count < 100) {
+          // Insert test data
+          updateStatus('Inserting test data...', 'info');
+          
+          const testData = [];
+          const basePrice = 50000;
+          const now = new Date();
+          
+          for (let i = 0; i < 200; i++) {
+            const timestamp = new Date(now.getTime() - (200 - i) * 60000).toISOString(); // 1 minute intervals
+            const price = basePrice + (Math.random() - 0.5) * 1000; // Random price variation
+            const size = Math.random() * 2; // Random size
+            const side = Math.random() > 0.5 ? 'buy' : 'sell';
+            
+            testData.push(`('${timestamp}', ${price.toFixed(2)}, ${size.toFixed(4)}, '${side}', 'test', 'BTC-USD')`);
+          }
+          
+          await queryManager.executeQuery(`
+            INSERT INTO trades (timestamp, price, size, side, exchange, pair) 
+            VALUES ${testData.join(', ')}
+          `, 'insert_test_data');
+          
+          updateStatus('Test data inserted successfully', 'success');
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Failed to setup test data:', error);
+        updateStatus('Failed to setup test data: ' + error.message, 'error');
+        return false;
+      }
+    }
+    
+    async function testBasicQueries() {
+      if (!queryManager) {
+        addTestResult('Basic Queries', 'FAILED', 'QueryManager not initialized', true);
+        return;
+      }
+      
+      try {
+        const testResults = await queryManager.testQueries();
+        
+        if (testResults.errors.length > 0) {
+          addTestResult('Basic Queries', 'FAILED', testResults.errors.join('\n'), true);
+        } else {
+          addTestResult('Basic Queries', 'PASSED', JSON.stringify(testResults, null, 2));
+        }
+      } catch (error) {
+        addTestResult('Basic Queries', 'FAILED', error.message, true);
+      }
+    }
+    
+    async function testTradeStats() {
+      if (!queryManager) {
+        addTestResult('Trade Stats', 'FAILED', 'QueryManager not initialized', true);
+        return;
+      }
+      
+      try {
+        const stats = await queryManager.getTradeStats(60); // 1 hour timeframe
+        addTestResult('Trade Stats', 'PASSED', JSON.stringify(stats, null, 2));
+      } catch (error) {
+        addTestResult('Trade Stats', 'FAILED', error.message, true);
+      }
+    }
+    
+    async function testPriceData() {
+      if (!queryManager) {
+        addTestResult('Price Data', 'FAILED', 'QueryManager not initialized', true);
+        return;
+      }
+      
+      try {
+        // Test different aggregation types
+        const rawData = await queryManager.getPriceData(30, 'none');
+        const aggData = await queryManager.getPriceData(30, 'minute');
+        
+        const results = {
+          raw_data_count: rawData.length,
+          aggregated_data_count: aggData.length,
+          sample_raw: rawData.slice(0, 3),
+          sample_aggregated: aggData.slice(0, 3)
+        };
+        
+        addTestResult('Price Data', 'PASSED', JSON.stringify(results, null, 2));
+      } catch (error) {
+        addTestResult('Price Data', 'FAILED', error.message, true);
+      }
+    }
+    
+    async function testVolumeAnalysis() {
+      if (!queryManager) {
+        addTestResult('Volume Analysis', 'FAILED', 'QueryManager not initialized', true);
+        return;
+      }
+      
+      try {
+        const bySide = await queryManager.getVolumeAnalysis(60, 'by_side');
+        const vwap = await queryManager.getVolumeAnalysis(60, 'vwap');
+        
+        const results = {
+          volume_by_side: bySide,
+          vwap: vwap
+        };
+        
+        addTestResult('Volume Analysis', 'PASSED', JSON.stringify(results, null, 2));
+      } catch (error) {
+        addTestResult('Volume Analysis', 'FAILED', error.message, true);
+      }
+    }
+    
+    async function testVolatilityAnalysis() {
+      if (!queryManager) {
+        addTestResult('Volatility Analysis', 'FAILED', 'QueryManager not initialized', true);
+        return;
+      }
+      
+      try {
+        const basicVol = await queryManager.getVolatilityAnalysis(60, 'basic');
+        const clustering = await queryManager.getVolatilityAnalysis(60, 'clustering');
+        
+        const results = {
+          basic_volatility: basicVol,
+          volatility_clustering: clustering
+        };
+        
+        addTestResult('Volatility Analysis', 'PASSED', JSON.stringify(results, null, 2));
+      } catch (error) {
+        addTestResult('Volatility Analysis', 'FAILED', error.message, true);
+      }
+    }
+    
+    async function runAllTests() {
+      clearResults();
+      updateStatus('Running all tests...', 'info');
+      
+      // Disable buttons during testing
+      const buttons = document.querySelectorAll('button');
+      buttons.forEach(btn => btn.disabled = true);
+      
+      try {
+        await setupTestData();
+        await testBasicQueries();
+        await testTradeStats();
+        await testPriceData();
+        await testVolumeAnalysis();
+        await testVolatilityAnalysis();
+        
+        updateStatus('All tests completed!', 'success');
+      } catch (error) {
+        updateStatus('Test suite failed: ' + error.message, 'error');
+      } finally {
+        // Re-enable buttons
+        buttons.forEach(btn => btn.disabled = false);
+      }
+    }
+    
+    // Initialize when DuckDB is ready
+    window.addEventListener('duckdb-ready', async () => {
+      updateStatus('DuckDB ready! Initializing QueryManager...', 'info');
+      
+      try {
+        queryManager = new QueryManager(window.duckdbConnection);
+        updateQueryStats();
+        
+        // Setup test data
+        const setupSuccess = await setupTestData();
+        if (setupSuccess) {
+          updateStatus('QueryManager ready! Click buttons to run tests.', 'success');
+        }
+      } catch (error) {
+        updateStatus('Failed to initialize QueryManager: ' + error.message, 'error');
+      }
+    });
+    
+    window.addEventListener('duckdb-error', (event) => {
+      updateStatus('DuckDB initialization failed: ' + event.detail.error, 'error');
+    });
+  </script>
+</body>
+</html>

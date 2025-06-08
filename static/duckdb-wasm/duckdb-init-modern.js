@@ -18,6 +18,7 @@ const DUCKDB_CONFIG = {
   cdnEnabled: true,
   
   // Local files configuration
+  localEnabled: false, // Disabled due to corrupted local files
   localBundles: {
     mvp: {
       mainModule: './static/duckdb-wasm/duckdb-mvp.wasm',
@@ -209,19 +210,30 @@ async function initializeDuckDB() {
   let duckdb, bundle, result;
   
   try {
-    // Strategy 1: Try local files first (faster, no network dependency)
-    try {
-      ({ duckdb, bundle } = await loadDuckDBFromLocal());
-      initializationMode = 'local';
-    } catch (localError) {
-      console.warn('⚠️ Local loading failed, trying CDN...');
-      
-      // Strategy 2: Fallback to CDN
+    // Strategy 1: Try local files first (if enabled)
+    if (DUCKDB_CONFIG.localEnabled) {
+      try {
+        ({ duckdb, bundle } = await loadDuckDBFromLocal());
+        initializationMode = 'local';
+      } catch (localError) {
+        console.warn('⚠️ Local loading failed, trying CDN...');
+        
+        // Strategy 2: Fallback to CDN
+        if (DUCKDB_CONFIG.cdnEnabled) {
+          ({ duckdb, bundle } = await loadDuckDBFromCDN());
+          initializationMode = 'cdn';
+        } else {
+          throw new Error('CDN loading disabled and local loading failed');
+        }
+      }
+    } else {
+      // Skip local loading, go directly to CDN
+      console.log('🌐 Local loading disabled, using CDN...');
       if (DUCKDB_CONFIG.cdnEnabled) {
         ({ duckdb, bundle } = await loadDuckDBFromCDN());
         initializationMode = 'cdn';
       } else {
-        throw new Error('CDN loading disabled and local loading failed');
+        throw new Error('Both local and CDN loading are disabled');
       }
     }
     

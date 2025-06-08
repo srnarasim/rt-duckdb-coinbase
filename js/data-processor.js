@@ -11,6 +11,7 @@ class DataProcessor {
     this.bufferSize = 1000; // Maximum number of trades to keep in memory
     this.processingData = false;
     this.isRealDuckDB = false;
+    this.queryManager = null;
   }
   
   async waitForDuckDB() {
@@ -127,6 +128,12 @@ class DataProcessor {
           console.log("🎭 DataProcessor using simulation mode");
         }
         
+        // Initialize QueryManager if we have a real DuckDB connection
+        if (this.isRealDuckDB && window.duckdbConnection && window.QueryManager) {
+          this.queryManager = new QueryManager(window.duckdbConnection);
+          console.log("📊 QueryManager initialized");
+        }
+        
         console.log("✅ DataProcessor initialized successfully");
         this.initialized = true;
         resolve();
@@ -220,6 +227,16 @@ class DataProcessor {
   async getStats(timeframe) {
     await this.initialize();
     
+    // Use modular query system if available
+    if (this.queryManager && window.TradeStatsQueries) {
+      try {
+        return await this.queryManager.getTradeStats(timeframe);
+      } catch (error) {
+        console.warn("⚠️ Modular query failed, falling back to legacy method:", error.message);
+      }
+    }
+    
+    // Legacy fallback method
     try {
       const conn = await this.db.connect();
       let result;

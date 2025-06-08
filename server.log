@@ -41,3 +41,27 @@
 10.2.42.182 - - [08/Jun/2025 16:05:40] "GET /static/duckdb-wasm/duckdb-init-modern.js?v=2 HTTP/1.1" 304 -
 10.2.42.182 - - [08/Jun/2025 16:06:20] "GET / HTTP/1.1" 200 -
 10.2.38.137 - - [08/Jun/2025 16:07:06] "GET / HTTP/1.1" 200 -
+10.2.58.81 - - [08/Jun/2025 16:16:30] "GET / HTTP/1.1" 304 -
+10.2.42.182 - - [08/Jun/2025 16:19:36] "GET /tests/query-tests.html HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:19:36] "GET /queries/volume-analysis.js HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:19:36] "GET /queries/price-data.js HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:19:36] "GET /static/duckdb-wasm/duckdb-init-modern.js?v=2 HTTP/1.1" 304 -
+10.2.42.182 - - [08/Jun/2025 16:19:36] "GET /queries/trade-stats.js HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:19:36] "GET /queries/volatility-analysis.js HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:19:36] "GET /js/query-manager.js HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:19:37] code 404, message File not found
+10.2.42.182 - - [08/Jun/2025 16:19:37] "GET /tests/static/duckdb-wasm/duckdb-browser.js HTTP/1.1" 404 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET / HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /js/query-manager.js?v=1 HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /js/data-connector.js?v=18 HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /queries/volatility-analysis.js?v=1 HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /queries/price-data.js?v=1 HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /static/observable-plot.min.js HTTP/1.1" 304 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /js/data-processor.js?v=18 HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /queries/trade-stats.js?v=1 HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /css/dashboard.css HTTP/1.1" 304 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /queries/volume-analysis.js?v=1 HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /js/chart-renderer.js?v=18 HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /static/duckdb-wasm/duckdb-init-modern.js?v=3 HTTP/1.1" 200 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /js/dashboard-controller.js?v=15 HTTP/1.1" 304 -
+10.2.42.182 - - [08/Jun/2025 16:22:16] "GET /js/main.js?v=15 HTTP/1.1" 304 -
