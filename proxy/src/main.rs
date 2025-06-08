@@ -153,10 +153,10 @@ async fn main() {
         });
     
     // JavaScript files handler
+    let static_dir_for_js = static_dir.clone();
     let js_files = warp::path::tail()
-        .and(warp::path::full())
-        .and_then(move |tail: warp::path::Tail, path: warp::path::FullPath| {
-            let static_dir = static_dir.clone();
+        .and_then(move |tail: warp::path::Tail| {
+            let static_dir = static_dir_for_js.clone();
             async move {
                 let path_str = tail.as_str();
                 let file_path = Path::new(&static_dir).join(path_str);
@@ -337,7 +337,7 @@ async fn connect_to_nex_stream(nex_url: String, clients: Clients) -> Result<(), 
     
     // Add authentication if credentials are provided
     if !username.is_empty() {
-        options = options.with_username_and_password(username.to_string(), password.to_string());
+        options = async_nats::ConnectOptions::with_user_and_password(username.to_string(), password.to_string());
     }
     
     // Connect to NATS server

@@ -16,13 +16,12 @@ fi
 echo "Building main application..."
 ./build.sh
 
-# Build the NEX publisher
-echo "Building NEX publisher..."
-cd nex-publisher
+# Build the simple publisher
+echo "Building simple publisher..."
+cd simple-publisher
 if ! cargo build --release; then
-  echo "Failed to build NEX publisher. Will use simulation mode instead."
+  echo "Failed to build simple publisher. Will use simulation mode instead."
   USE_SIMULATION="true"
-  USE_LOCAL_NATS="false"
 fi
 cd ..
 
@@ -41,16 +40,14 @@ if [ "$USE_LOCAL_NATS" = "true" ]; then
   fi
 fi
 
-# Start the NEX publisher if using local NATS
-if [ "$USE_LOCAL_NATS" = "true" ]; then
-  echo "Starting NEX publisher..."
-  RUST_LOG=info ./nex-publisher/target/release/nex-publisher --nats-url "$NEX_URL" &
-  NEX_PUBLISHER_PID=$!
-  echo "NEX publisher started with PID: $NEX_PUBLISHER_PID"
-  
-  # Give the publisher a moment to connect
-  sleep 2
-fi
+# Start the simple publisher instead of NEX publisher
+echo "Starting simple publisher..."
+RUST_LOG=info ./simple-publisher/target/release/simple-publisher &
+PUBLISHER_PID=$!
+echo "Simple publisher started with PID: $PUBLISHER_PID"
+
+# Give the publisher a moment to connect
+sleep 2
 
 # Start the unified Rust server
 echo "Starting unified Rust server..."
@@ -65,8 +62,8 @@ else
   RUST_LOG=info ./target/release/rt-duckdb-coinbase-server --nex-url "$NEX_URL" --proxy-port 3030 --http-port 54572 --static-dir ".."
 fi
 
-# Clean up the NEX publisher when the server exits
-if [ "$USE_LOCAL_NATS" = "true" ] && [ -n "$NEX_PUBLISHER_PID" ]; then
-  echo "Stopping NEX publisher..."
-  kill $NEX_PUBLISHER_PID
+# Clean up the publisher when the server exits
+if [ -n "$PUBLISHER_PID" ]; then
+  echo "Stopping publisher..."
+  kill $PUBLISHER_PID
 fi

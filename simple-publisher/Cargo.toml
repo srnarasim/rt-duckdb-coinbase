@@ -1,0 +1,15 @@
+[package]
+name = "simple-publisher"
+version = "0.1.0"
+edition = "2021"
+description = "Simple publisher for simulated BTC-USD data"
+
+[dependencies]
+tokio = { version = "1.28", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4.24"
+rand = "0.8.5"
+log = "0.4.17"
+env_logger = "0.10.0"
+clap = { version = "4.3.0", features = ["derive"] }
