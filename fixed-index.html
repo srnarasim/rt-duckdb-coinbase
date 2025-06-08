@@ -1,381 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Real-Time BTC/USD Analytics Dashboard</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time BTC/USD Analytics Dashboard</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-      background-color: #f8f9fa;
-    }
-    h1, h2, h3 {
-      color: #333;
-      text-align: center;
-    }
-    .dashboard {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-    .chart-container {
-      background-color: white;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      padding: 15px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .full-width {
-      grid-column: 1 / -1;
-    }
-    .controls {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      padding: 10px;
-      background-color: white;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-    }
-    .control-group {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .stats-container {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    .stat-card {
-      background-color: white;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      padding: 15px;
-      text-align: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .stat-value {
-      font-size: 1.5em;
-      font-weight: bold;
-      color: #333;
-    }
-    .stat-label {
-      font-size: 0.9em;
-      color: #666;
-    }
-    select, button {
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background-color: white;
-      cursor: pointer;
-    }
-    button {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    footer {
-      margin-top: 40px;
-      text-align: center;
-      font-size: 0.8em;
-      color: #666;
-      padding: 10px;
-      background-color: white;
-      border-radius: 5px;
-      border: 1px solid #ddd;
-    }
-    @media (max-width: 768px) {
-      .dashboard {
-        grid-template-columns: 1fr;
-      }
-      .stats-container {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-  </style>
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/dashboard.css">
+  
+  <!-- DuckDB WASM -->
+  <script src="https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.27.0/dist/duckdb.js"></script>
+  
+  <!-- Observable Plot for visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.11/dist/plot.umd.min.js"></script>
+  
+  <!-- Custom modules -->
+  <script src="js/data-connector.js"></script>
+  <script src="js/data-processor.js"></script>
+  <script src="js/chart-renderer.js"></script>
+  <script src="js/dashboard-controller.js"></script>
+  <script src="js/main.js"></script>
 </head>
 <body>
-  <h1>BTC-USD Real-Time Analytics Dashboard</h1>
-
-  <div class="controls">
-    <div class="control-group">
-      <label for="timeframe">Timeframe:</label>
-      <select id="timeframe">
-        <option value="1m">1 Minute</option>
-        <option value="5m" selected>5 Minutes</option>
-        <option value="15m">15 Minutes</option>
-        <option value="1h">1 Hour</option>
-        <option value="all">All Data</option>
-      </select>
-    </div>
-    <div class="control-group">
-      <label for="aggregation">Aggregation:</label>
-      <select id="aggregation">
-        <option value="none" selected>None</option>
-        <option value="1s">1 Second</option>
-        <option value="5s">5 Seconds</option>
-        <option value="10s">10 Seconds</option>
-        <option value="30s">30 Seconds</option>
-      </select>
-    </div>
-    <div class="control-group">
-      <button id="reset-zoom">Reset Zoom</button>
-      <button id="toggle-simulation">Pause</button>
+  <!-- Loading Indicator -->
+  <div id="loading-indicator" class="loading-overlay">
+    <div>
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading Dashboard...</div>
     </div>
   </div>
-
+  
+  <!-- Error Message -->
+  <div id="error-message" class="error-message"></div>
+  
+  <!-- Header -->
+  <header>
+    <h1>BTC-USD Real-Time Analytics Dashboard</h1>
+    
+    <!-- Controls -->
+    <div class="controls">
+      <div class="control-group">
+        <label for="timeframe-select">Timeframe:</label>
+        <select id="timeframe-select">
+          <option value="1">1 Minute</option>
+          <option value="5" selected>5 Minutes</option>
+          <option value="15">15 Minutes</option>
+          <option value="60">1 Hour</option>
+          <option value="1440">All Data</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="aggregation-select">Aggregation:</label>
+        <select id="aggregation-select">
+          <option value="none" selected>None</option>
+          <option value="1">1 Second</option>
+          <option value="5">5 Seconds</option>
+          <option value="10">10 Seconds</option>
+          <option value="30">30 Seconds</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <button id="reset-zoom-button">Reset Zoom</button>
+        <button id="pause-button">Pause</button>
+      </div>
+    </div>
+    
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-item">
+        <span class="status-label">Connection:</span>
+        <span id="connection-status" class="connection-status">Connected</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">Trades Received:</span>
+        <span id="trade-counter">0</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">Last Update:</span>
+        <span id="last-update-time">-</span>
+      </div>
+    </div>
+  </header>
+  
+  <!-- Stats Container -->
   <div class="stats-container">
-    <div class="stat-card">
-      <div class="stat-value" id="current-price">$0.00</div>
+    <div class="stat-box">
+      <div id="current-price">$0.00</div>
       <div class="stat-label">Current Price</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-value" id="price-change">0.00%</div>
+    
+    <div class="stat-box">
+      <div id="change-percent">0.00%</div>
       <div class="stat-label">Change (Session)</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-value" id="session-high">$0.00</div>
+    
+    <div class="stat-box">
+      <div id="session-high">$0.00</div>
       <div class="stat-label">Session High</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-value" id="session-low">$0.00</div>
+    
+    <div class="stat-box">
+      <div id="session-low">$0.00</div>
       <div class="stat-label">Session Low</div>
     </div>
   </div>
-
-  <div class="dashboard">
-    <div class="chart-container full-width">
+  
+  <!-- Charts Container -->
+  <div class="charts-container">
+    <!-- Price Chart -->
+    <div class="chart-box full-width">
       <h2>Price Chart</h2>
       <div id="price-chart" class="chart"></div>
     </div>
     
-    <div class="chart-container">
-      <h3>Price Volatility</h3>
+    <!-- Price Volatility -->
+    <div class="chart-box">
+      <h2>Price Volatility</h2>
       <div id="volatility-chart" class="chart"></div>
     </div>
     
-    <div class="chart-container">
-      <h3>Price Distribution</h3>
+    <!-- Price Distribution -->
+    <div class="chart-box">
+      <h2>Price Distribution</h2>
       <div id="distribution-chart" class="chart"></div>
     </div>
     
-    <div class="chart-container full-width">
-      <h3>Moving Averages</h3>
-      <div id="ma-chart" class="chart"></div>
+    <!-- Moving Averages -->
+    <div class="chart-box full-width">
+      <h2>Moving Averages</h2>
+      <div id="moving-averages-chart" class="chart"></div>
     </div>
     
-    <div class="chart-container">
-      <h3>Volume Profile</h3>
-      <div id="volume-chart" class="chart"></div>
+    <!-- Volume Profile -->
+    <div class="chart-box">
+      <h2>Volume Profile</h2>
+      <div id="volume-profile-chart" class="chart"></div>
     </div>
     
-    <div class="chart-container">
-      <h3>Price Change Heatmap</h3>
+    <!-- Price Change Heatmap -->
+    <div class="chart-box">
+      <h2>Price Change Heatmap</h2>
       <div id="heatmap-chart" class="chart"></div>
     </div>
   </div>
-
-  <!-- Add a hidden div for the old structure -->
-  <div id="legacy-container" style="display: none;">
-    <div id="chart"></div>
-  </div>
-
-  <!-- Load Observable Plot -->
-  <script src="./static/observable-plot.min.js"></script>
-  <!-- Fallback for Observable Plot -->
-  <script>
-    if (typeof window.Plot === 'undefined') {
-      console.log('Observable Plot not loaded from primary source, trying fallback...');
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.11/dist/plot.umd.min.js';
-      document.head.appendChild(script);
-    }
-  </script>
-
-  <!-- Inline compatibility module -->
-  <script>
-    // Compatibility module
-    const CompatibilityModule = {
-      // Check if the application is using the old or new HTML structure
-      checkStructure: function() {
-        const isNewStructure = document.getElementById('price-chart') !== null;
-        const isOldStructure = document.getElementById('chart') !== null;
-        
-        console.log("Using new chart structure:", isNewStructure);
-        console.log("Using old chart structure:", isOldStructure);
-        
-        return { isNewStructure, isOldStructure };
-      },
-      
-      // Draw a chart in the legacy HTML structure
-      legacyDrawChart: function(data) {
-        const chartElement = document.getElementById('chart');
-        if (!chartElement) {
-          console.error('Chart element not found');
-          return;
-        }
-        
-        // Clear previous content
-        chartElement.innerHTML = '';
-        
-        // Create canvas for drawing
-        const canvas = document.createElement('canvas');
-        canvas.width = chartElement.clientWidth || 800;
-        canvas.height = 300;
-        chartElement.appendChild(canvas);
-        
-        const ctx = canvas.getContext('2d');
-        
-        // Draw chart background
-        ctx.fillStyle = '#f5f5f5';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw axes
-        ctx.strokeStyle = '#000';
-        ctx.beginPath();
-        ctx.moveTo(50, 20);
-        ctx.lineTo(50, canvas.height - 30);
-        ctx.lineTo(canvas.width - 20, canvas.height - 30);
-        ctx.stroke();
-        
-        // Add y-axis label
-        ctx.save();
-        ctx.translate(15, canvas.height / 2);
-        ctx.rotate(-Math.PI / 2);
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#000';
-        ctx.fillText('BTC Price (USD)', 0, 0);
-        ctx.restore();
-        
-        // Draw data if available
-        if (data && data.length > 1) {
-          // Find min/max values for scaling
-          let minY = Infinity;
-          let maxY = -Infinity;
-          let minX = new Date(data[0].time).getTime();
-          let maxX = new Date(data[data.length - 1].time).getTime();
-          
-          data.forEach(d => {
-            const yVal = parseFloat(d.price);
-            minY = Math.min(minY, yVal);
-            maxY = Math.max(maxY, yVal);
-          });
-          
-          // Add some padding
-          minY = minY * 0.99;
-          maxY = maxY * 1.01;
-          
-          // Draw the line
-          ctx.strokeStyle = '#3498db';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          
-          data.forEach((d, i) => {
-            const xVal = new Date(d.time).getTime();
-            const yVal = parseFloat(d.price);
-            
-            // Scale to canvas
-            const x = 50 + (xVal - minX) / (maxX - minX) * (canvas.width - 70);
-            const y = (canvas.height - 30) - (yVal - minY) / (maxY - minY) * (canvas.height - 50);
-            
-            if (i === 0) {
-              ctx.moveTo(x, y);
-            } else {
-              ctx.lineTo(x, y);
-            }
-          });
-          
-          ctx.stroke();
-          
-          // Add price labels
-          ctx.fillStyle = '#000';
-          ctx.textAlign = 'right';
-          ctx.fillText(maxY.toFixed(2), 45, 25);
-          ctx.fillText(minY.toFixed(2), 45, canvas.height - 35);
-          
-          // Add current price display
-          const currentPrice = data[data.length - 1].price;
-          ctx.fillStyle = '#333';
-          ctx.textAlign = 'left';
-          ctx.font = 'bold 16px Arial';
-          ctx.fillText(`Current Price: $${currentPrice.toFixed(2)}`, 60, 40);
-          
-          // Update stats
-          const initialPrice = data[0].price;
-          const priceChange = ((currentPrice - initialPrice) / initialPrice) * 100;
-          const sessionHigh = Math.max(...data.map(d => d.price));
-          const sessionLow = Math.min(...data.map(d => d.price));
-          
-          const currentPriceElement = document.getElementById('current-price');
-          const priceChangeElement = document.getElementById('price-change');
-          const sessionHighElement = document.getElementById('session-high');
-          const sessionLowElement = document.getElementById('session-low');
-          
-          if (currentPriceElement) currentPriceElement.textContent = `$${currentPrice.toFixed(2)}`;
-          if (priceChangeElement) {
-            priceChangeElement.textContent = `${priceChange.toFixed(2)}%`;
-            priceChangeElement.style.color = priceChange >= 0 ? '#4CAF50' : '#f44336';
-          }
-          if (sessionHighElement) sessionHighElement.textContent = `$${sessionHigh.toFixed(2)}`;
-          if (sessionLowElement) sessionLowElement.textContent = `$${sessionLow.toFixed(2)}`;
-        }
-      }
-    };
-  </script>
-
-  <!-- Load the WebAssembly module -->
-  <script type="module">
-    // Make the compatibility module available globally
-    window.CompatibilityModule = CompatibilityModule;
-    
-    // Use a direct path to the WebAssembly module
-    // This avoids issues with relative paths and MIME types
-    const modulePath = './pkg/rt_duckdb_coinbase.js';
-    
-    console.log(`Loading WebAssembly module from: ${modulePath}`);
-    
-    // Import the module
-    import(modulePath)
-      .then(module => {
-        console.log(`Successfully loaded module from: ${modulePath}`);
-        // Start the application
-        module.default();
-      })
-      .catch(err => {
-        console.error(`Failed to load module from ${modulePath}:`, err);
-        
-        // Fallback to an alternative path
-        const fallbackPath = 'pkg/rt_duckdb_coinbase.js';
-        console.log(`Trying fallback path: ${fallbackPath}`);
-        
-        return import(fallbackPath)
-          .then(module => {
-            console.log(`Successfully loaded module from fallback: ${fallbackPath}`);
-            module.default();
-          })
-          .catch(err2 => {
-            console.error(`Fallback also failed: ${err2}`);
-            document.querySelectorAll('.chart').forEach(chart => {
-              chart.innerHTML = '<p style="color: red;">Failed to load WebAssembly module. Please check the console for errors.</p>';
-            });
-          });
-      });
-  </script>
-
+  
+  <!-- Footer -->
   <footer>
     <p>Real-Time BTC/USD Analytics with DuckDB-WASM + Rust + D3</p>
-    <p>Data source: Coinbase WebSocket API (Simulated)</p>
+    <p>Data source: Coinbase WebSocket API (via NEX Stream)</p>
   </footer>
 </body>
 </html>
