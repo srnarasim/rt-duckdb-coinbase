@@ -143,27 +143,19 @@ class DataProcessor {
     try {
       const conn = await this.db.connect();
       
-      if (this.isRealDuckDB) {
-        // Use parameterized queries for real DuckDB
-        for (const trade of trades) {
-          await conn.query(`
-            INSERT INTO trades (timestamp, price, size, side, exchange, pair)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `, [
-            new Date(trade.timestamp),
-            parseFloat(trade.data.price),
-            parseFloat(trade.data.size),
-            trade.data.side,
-            trade.data.exchange || 'coinbase',
-            trade.data.pair || 'BTC-USD'
-          ]);
-        }
-      } else {
-        // Use string concatenation for mock DuckDB (simpler)
-        const values = trades.map(d => {
-          return `(${d.timestamp}, ${d.data.price}, ${d.data.size}, '${d.data.side}', '${d.data.exchange || 'coinbase'}', '${d.data.pair || 'BTC-USD'}')`;
-        }).join(', ');
+      // Use string concatenation for DuckDB WASM (parameterized queries not fully supported)
+      const values = trades.map(trade => {
+        const timestamp = new Date(trade.timestamp).toISOString();
+        const price = parseFloat(trade.data.price);
+        const size = parseFloat(trade.data.size);
+        const side = trade.data.side || 'unknown';
+        const exchange = trade.data.exchange || 'coinbase';
+        const pair = trade.data.pair || 'BTC-USD';
         
+        return `('${timestamp}', ${price}, ${size}, '${side}', '${exchange}', '${pair}')`;
+      }).join(', ');
+      
+      if (values) {
         await conn.query(`INSERT INTO trades (timestamp, price, size, side, exchange, pair) VALUES ${values}`);
       }
       
@@ -232,74 +224,61 @@ class DataProcessor {
       const conn = await this.db.connect();
       let result;
       
-      if (this.isRealDuckDB) {
-        // Use advanced SQL for real DuckDB
-        result = await conn.query(`
-          SELECT 
-            MAX(price) AS session_high,
-            MIN(price) AS session_low,
-            FIRST(price ORDER BY timestamp) AS first_price,
-            LAST(price ORDER BY timestamp) AS current_price,
-            COUNT(*) AS trade_count,
-            AVG(price) AS avg_price
-          FROM trades
-          WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '${timeframe} MINUTE'
-        `);
-      } else {
-        // Use simpler SQL for mock DuckDB
-        const now = Date.now();
-        const timeWindow = timeframe * 60 * 1000;
-        const startTime = now - timeWindow;
-        
-        result = await conn.query(`
-          SELECT 
-            MAX(price) AS session_high,
-            MIN(price) AS session_low,
-            COUNT(*) AS trade_count,
-            AVG(price) AS avg_price
-          FROM trades
-          WHERE timestamp >= ${startTime}
-        `);
-        
-        // Get first and last prices separately for mock
-        const firstResult = await conn.query(`
-          SELECT price AS first_price FROM trades 
-          WHERE timestamp >= ${startTime} 
-          ORDER BY timestamp ASC LIMIT 1
-        `);
-        
-        const lastResult = await conn.query(`
-          SELECT price AS current_price FROM trades 
-          WHERE timestamp >= ${startTime} 
-          ORDER BY timestamp DESC LIMIT 1
-        `);
-        
-        const resultArray = result.toArray();
-        const firstResultArray = firstResult.toArray();
-        const lastResultArray = lastResult.toArray();
-        
-        const stats = resultArray && resultArray.length > 0 ? resultArray[0] : {};
-        const firstPrice = firstResultArray && firstResultArray.length > 0 ? firstResultArray[0]?.first_price || 0 : 0;
-        const currentPrice = lastResultArray && lastResultArray.length > 0 ? lastResultArray[0]?.current_price || 0 : 0;
-        
-        stats.first_price = firstPrice;
-        stats.current_price = currentPrice;
-        
-        result = { toArray: () => [stats] };
-      }
+      // Use compatible SQL for DuckDB WASM
+      const now = new Date();
+      const timeWindow = timeframe * 60 * 1000;
+      const startTime = new Date(now.getTime() - timeWindow).toISOString();
+      
+      result = await conn.query(`
+        SELECT 
+          MAX(price) AS session_high,
+          MIN(price) AS session_low,
+          COUNT(*) AS trade_count,
+          AVG(price) AS avg_price
+        FROM trades
+        WHERE timestamp >= '${startTime}'
+      `);
+      
+      // Get first and last prices separately (FIRST/LAST functions may not be available)
+      const firstResult = await conn.query(`
+        SELECT price AS first_price FROM trades 
+        WHERE timestamp >= '${startTime}' 
+        ORDER BY timestamp ASC LIMIT 1
+      `);
+      
+      const lastResult = await conn.query(`
+        SELECT price AS current_price FROM trades 
+        WHERE timestamp >= '${startTime}' 
+        ORDER BY timestamp DESC LIMIT 1
+      `);
+      
+      const resultArray = result.toArray();
+      const firstResultArray = firstResult.toArray();
+      const lastResultArray = lastResult.toArray();
+      
+      const stats = resultArray && resultArray.length > 0 ? resultArray[0] : {};
+      const firstPrice = firstResultArray && firstResultArray.length > 0 ? firstResultArray[0]?.first_price || 0 : 0;
+      const currentPrice = lastResultArray && lastResultArray.length > 0 ? lastResultArray[0]?.current_price || 0 : 0;
+      
+      stats.first_price = firstPrice;
+      stats.current_price = currentPrice;
+      
+      result = { toArray: () => [stats] };
+      
+
       
       const finalResultArray = result.toArray();
-      const stats = finalResultArray && finalResultArray.length > 0 ? finalResultArray[0] : {};
+      const finalStats = finalResultArray && finalResultArray.length > 0 ? finalResultArray[0] : {};
       
       // Calculate change percentage
-      if (stats.first_price && stats.current_price) {
-        stats.change_percent = ((stats.current_price - stats.first_price) / stats.first_price) * 100;
+      if (finalStats.first_price && finalStats.current_price) {
+        finalStats.change_percent = ((finalStats.current_price - finalStats.first_price) / finalStats.first_price) * 100;
       } else {
-        stats.change_percent = 0;
+        finalStats.change_percent = 0;
       }
       
       await conn.close();
-      return stats;
+      return finalStats;
       
     } catch (e) {
       console.error("❌ Error getting stats:", e);
@@ -324,9 +303,9 @@ class DataProcessor {
     }
     
     // Calculate time window
-    const now = Date.now();
+    const now = new Date();
     const timeWindow = timeframe * 60 * 1000; // Convert minutes to milliseconds
-    const startTime = now - timeWindow;
+    const startTime = new Date(now.getTime() - timeWindow).toISOString();
     
     try {
       let query;
@@ -336,20 +315,20 @@ class DataProcessor {
         query = `
           SELECT timestamp, price
           FROM trades
-          WHERE timestamp >= ${startTime}
+          WHERE timestamp >= '${startTime}'
           ORDER BY timestamp
         `;
       } else {
-        // Aggregate by time interval
-        const interval = parseInt(aggregation) * 1000; // Convert seconds to milliseconds
+        // Aggregate by time interval (simplified for DuckDB WASM)
+        const intervalSeconds = parseInt(aggregation);
         query = `
           SELECT 
-            (timestamp / ${interval}) * ${interval} AS interval_start,
+            DATE_TRUNC('second', timestamp) AS timestamp,
             AVG(price) AS price
           FROM trades
-          WHERE timestamp >= ${startTime}
-          GROUP BY interval_start
-          ORDER BY interval_start
+          WHERE timestamp >= '${startTime}'
+          GROUP BY DATE_TRUNC('second', timestamp)
+          ORDER BY timestamp
         `;
       }
       
@@ -371,9 +350,9 @@ class DataProcessor {
     }
     
     // Calculate time window
-    const now = Date.now();
+    const now = new Date();
     const timeWindow = timeframe * 60 * 1000; // Convert minutes to milliseconds
-    const startTime = now - timeWindow;
+    const startTime = new Date(now.getTime() - timeWindow).toISOString();
     
     try {
       const query = `
@@ -381,7 +360,7 @@ class DataProcessor {
           side,
           SUM(size) AS volume
         FROM trades
-        WHERE timestamp >= ${startTime}
+        WHERE timestamp >= '${startTime}'
         GROUP BY side
       `;
       
@@ -403,9 +382,9 @@ class DataProcessor {
     }
     
     // Calculate time window
-    const now = Date.now();
+    const now = new Date();
     const timeWindow = timeframe * 60 * 1000; // Convert minutes to milliseconds
-    const startTime = now - timeWindow;
+    const startTime = new Date(now.getTime() - timeWindow).toISOString();
     
     try {
       // Calculate volatility as standard deviation of price changes
@@ -417,7 +396,7 @@ class DataProcessor {
             LAG(price) OVER (ORDER BY timestamp) AS prev_price,
             (price - LAG(price) OVER (ORDER BY timestamp)) / LAG(price) OVER (ORDER BY timestamp) * 100 AS pct_change
           FROM trades
-          WHERE timestamp >= ${startTime}
+          WHERE timestamp >= '${startTime}'
         )
         SELECT 
           STDDEV(pct_change) AS volatility,
@@ -445,9 +424,9 @@ class DataProcessor {
     }
     
     // Calculate time window
-    const now = Date.now();
+    const now = new Date();
     const timeWindow = timeframe * 60 * 1000; // Convert minutes to milliseconds
-    const startTime = now - timeWindow;
+    const startTime = new Date(now.getTime() - timeWindow).toISOString();
     
     try {
       // First get min and max price
@@ -456,7 +435,7 @@ class DataProcessor {
           MIN(price) AS min_price,
           MAX(price) AS max_price
         FROM trades
-        WHERE timestamp >= ${startTime}
+        WHERE timestamp >= '${startTime}'
       `;
       
       const conn = await this.db.connect();
@@ -497,7 +476,7 @@ class DataProcessor {
           COUNT(trades.price) AS count
         FROM bins
         LEFT JOIN trades ON trades.price >= bins.bin_start AND trades.price < bins.bin_end
-          AND trades.timestamp >= ${startTime}
+          AND trades.timestamp >= '${startTime}'
         GROUP BY bins.bin_start, bins.bin_end, bins.bin_number
         ORDER BY bins.bin_number
       `;
@@ -520,9 +499,9 @@ class DataProcessor {
     }
     
     // Calculate time window
-    const now = Date.now();
+    const now = new Date();
     const timeWindow = timeframe * 60 * 1000; // Convert minutes to milliseconds
-    const startTime = now - timeWindow;
+    const startTime = new Date(now.getTime() - timeWindow).toISOString();
     
     try {
       // Calculate moving averages with window functions
@@ -543,7 +522,7 @@ class DataProcessor {
             ROWS BETWEEN 49 PRECEDING AND CURRENT ROW
           ) AS ma_50
         FROM trades
-        WHERE timestamp >= ${startTime}
+        WHERE timestamp >= '${startTime}'
         ORDER BY timestamp
       `;
       
@@ -643,6 +622,8 @@ class DataProcessor {
    * Generate simulated volume data for fallback
    */
   getSimulatedVolumeData(timeframe) {
+    console.log("🔍 getSimulatedVolumeData called with timeframe:", timeframe, "buffer size:", this.dataBuffer.length);
+    
     const now = Date.now();
     const timeWindow = timeframe * 60 * 1000;
     const startTime = now - timeWindow;
@@ -657,6 +638,7 @@ class DataProcessor {
       }))
       .sort((a, b) => a.timestamp - b.timestamp);
     
+    console.log("📊 Volume data returned:", filteredData.length, "items");
     return filteredData;
   }
   
@@ -664,9 +646,14 @@ class DataProcessor {
    * Generate simulated volatility data for fallback
    */
   getSimulatedVolatilityData(timeframe) {
+    console.log("🔍 getSimulatedVolatilityData called with timeframe:", timeframe);
+    
     const priceData = this.getSimulatedPriceData(timeframe);
     
+    console.log("📊 Price data for volatility:", priceData.length, "items");
+    
     if (priceData.length < 2) {
+      console.log("⚠️ Not enough price data for volatility calculation");
       return [];
     }
     
@@ -682,19 +669,27 @@ class DataProcessor {
     const variance = changes.reduce((sum, change) => sum + Math.pow(change - mean, 2), 0) / changes.length;
     const volatility = Math.sqrt(variance) * 100; // Convert to percentage
     
-    return [{
+    const result = [{
       timestamp: Date.now(),
       volatility: volatility
     }];
+    
+    console.log("📊 Volatility result:", result);
+    return result;
   }
   
   /**
    * Generate simulated price distribution with timeframe support
    */
   getSimulatedPriceDistribution(timeframe, bins = 10) {
+    console.log("🔍 getSimulatedPriceDistribution called with timeframe:", timeframe, "bins:", bins);
+    
     const priceData = this.getSimulatedPriceData(timeframe);
     
+    console.log("📊 Price data for distribution:", priceData.length, "items");
+    
     if (priceData.length === 0) {
+      console.log("⚠️ No price data, using fallback distribution");
       return this.getSimulatedPriceDistribution(bins); // Fallback to original method
     }
     
