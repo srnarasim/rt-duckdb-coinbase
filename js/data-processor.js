@@ -30,19 +30,13 @@ class DataProcessor {
           return;
         }
         
-        // Initialize DuckDB
-        const JSDELIVR_BUNDLES = {
-          "duckdb-browser": "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.27.0/dist/duckdb-browser.js",
-          "duckdb-browser-mvp": "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.27.0/dist/duckdb-browser-mvp.js",
-        };
-        
-        // Select the bundle based on browser capabilities
-        const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
-        const worker = new Worker(bundle.mainWorker);
+        // No need for bundles with our local implementation
+        // Just create a logger and use the global duckdb object
         const logger = new duckdb.ConsoleLogger();
+        const worker = null; // No worker needed for our mock implementation
         
         this.db = new duckdb.AsyncDuckDB(logger, worker);
-        await this.db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+        await this.db.instantiate(null, null); // No modules needed for our mock implementation
         
         // Create trades table
         await this.db.query(`
