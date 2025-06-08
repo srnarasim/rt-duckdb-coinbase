@@ -47,7 +47,11 @@ rt-duckdb-coinbase/
 
 ├── js/
 
-│ └── duckdb.js # JavaScript code for DuckDB integration
+│ ├── data-connector.js # WebSocket connection and data reception
+│ ├── data-processor.js # DuckDB-WASM data processing and analysis
+│ ├── chart-renderer.js # Chart rendering with Observable Plot
+│ ├── dashboard-controller.js # User interactions and updates
+│ └── main.js # Application entry point
 
 ├── static/
 

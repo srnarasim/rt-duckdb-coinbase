@@ -11,6 +11,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       loadingIndicator.style.display = "flex";
     }
     
+    // Check if DuckDB is available
+    if (typeof duckdb === 'undefined') {
+      throw new Error("DuckDB is not defined. Make sure the DuckDB WASM library is properly loaded.");
+    }
+    
     // Initialize the dashboard
     const dashboard = new DashboardController();
     await dashboard.initialize();

@@ -23,6 +23,13 @@ class DataProcessor {
     
     this.initPromise = new Promise(async (resolve, reject) => {
       try {
+        // Check if duckdb is available
+        if (typeof duckdb === 'undefined') {
+          console.error("DuckDB is not defined. Make sure the DuckDB WASM library is properly loaded.");
+          reject(new Error("DuckDB is not defined"));
+          return;
+        }
+        
         // Initialize DuckDB
         const JSDELIVR_BUNDLES = {
           "duckdb-browser": "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.27.0/dist/duckdb-browser.js",
