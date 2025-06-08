@@ -124,24 +124,38 @@ async fn main() {
     let static_dir = args.static_dir.clone();
     info!("Serving static files from directory: {}", static_dir);
     
-    // Favicon handler to prevent 404 errors
+    // Favicon handler
     let static_dir_clone = static_dir.clone();
     let favicon_route = warp::path("favicon.ico")
-        .map(move || {
+        .and_then(move || {
             let path = Path::new(&static_dir_clone).join("favicon.ico");
-            if path.exists() {
-                warp::reply::with_header(
-                    warp::reply::html(""),
-                    "Content-Type",
-                    "image/x-icon",
-                )
-            } else {
-                // Return an empty favicon to prevent 404 errors
-                warp::reply::with_header(
-                    warp::reply::html(""),
-                    "Content-Type",
-                    "image/x-icon",
-                )
+            async move {
+                if path.exists() {
+                    match tokio::fs::read(&path).await {
+                        Ok(content) => {
+                            Ok(warp::reply::with_header(
+                                content,
+                                "Content-Type",
+                                "image/x-icon",
+                            ))
+                        },
+                        Err(_) => {
+                            // Return an empty favicon if we can't read the file
+                            Ok(warp::reply::with_header(
+                                warp::reply::html(""),
+                                "Content-Type",
+                                "image/x-icon",
+                            ))
+                        }
+                    }
+                } else {
+                    // Return an empty favicon to prevent 404 errors
+                    Ok(warp::reply::with_header(
+                        warp::reply::html(""),
+                        "Content-Type",
+                        "image/x-icon",
+                    ))
+                }
             }
         });
     
