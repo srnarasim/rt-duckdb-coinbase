@@ -30,22 +30,17 @@ class DataProcessor {
           return;
         }
         
-        // Initialize DuckDB
-        const JSDELIVR_BUNDLES = {
-          "duckdb-browser": "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.27.0/dist/duckdb-browser.js",
-          "duckdb-browser-mvp": "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.27.0/dist/duckdb-browser-mvp.js",
-        };
-        
-        // Select the bundle based on browser capabilities
-        const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
-        const worker = new Worker(bundle.mainWorker);
+        // No need for bundles with our local implementation
+        // Just create a logger and use the global duckdb object
         const logger = new duckdb.ConsoleLogger();
+        const worker = null; // No worker needed for our mock implementation
         
         this.db = new duckdb.AsyncDuckDB(logger, worker);
-        await this.db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+        await this.db.instantiate(null, null); // No modules needed for our mock implementation
         
         // Create trades table
-        await this.db.query(`
+        const conn = await this.db.connect();
+        await conn.query(`
           CREATE TABLE trades (
             price DOUBLE,
             size DOUBLE,
@@ -87,7 +82,8 @@ class DataProcessor {
         // Clear existing data if we have too much
         const count = await this.getTradeCount();
         if (count > this.bufferSize) {
-          await this.db.query(`DELETE FROM trades WHERE timestamp NOT IN (SELECT timestamp FROM trades ORDER BY timestamp DESC LIMIT ${this.bufferSize})`);
+          const conn = await this.db.connect();
+          await conn.query(`DELETE FROM trades WHERE timestamp NOT IN (SELECT timestamp FROM trades ORDER BY timestamp DESC LIMIT ${this.bufferSize})`);
         }
         
         // Insert new data
@@ -96,7 +92,8 @@ class DataProcessor {
             return `(${d.data.price}, ${d.data.size}, '${d.data.side}', '${d.data.exchange}', '${d.data.pair}', ${d.timestamp})`;
           }).join(', ');
           
-          await this.db.query(`INSERT INTO trades VALUES ${values}`);
+          const conn = await this.db.connect();
+          await conn.query(`INSERT INTO trades VALUES ${values}`);
           this.dataBuffer = [];
         }
       } catch (e) {
@@ -109,7 +106,8 @@ class DataProcessor {
   
   async getTradeCount() {
     await this.initialize();
-    const result = await this.db.query(`SELECT COUNT(*) as count FROM trades`);
+    const conn = await this.db.connect();
+    const result = await conn.query(`SELECT COUNT(*) as count FROM trades`);
     return result.toArray()[0].count;
   }
   
@@ -123,7 +121,8 @@ class DataProcessor {
     
     try {
       // Query for stats
-      const result = await this.db.query(`
+      const conn = await this.db.connect();
+      const result = await conn.query(`
         SELECT 
           MAX(price) AS session_high,
           MIN(price) AS session_low,
@@ -188,7 +187,8 @@ class DataProcessor {
         `;
       }
       
-      const result = await this.db.query(query);
+      const conn = await this.db.connect();
+      const result = await conn.query(query);
       return result.toArray();
     } catch (e) {
       console.error("Error getting price data:", e);
@@ -214,7 +214,8 @@ class DataProcessor {
         GROUP BY side
       `;
       
-      const result = await this.db.query(query);
+      const conn = await this.db.connect();
+      const result = await conn.query(query);
       return result.toArray();
     } catch (e) {
       console.error("Error getting volume data:", e);
@@ -249,7 +250,8 @@ class DataProcessor {
         WHERE prev_price IS NOT NULL
       `;
       
-      const result = await this.db.query(query);
+      const conn = await this.db.connect();
+      const result = await conn.query(query);
       return result.toArray()[0];
     } catch (e) {
       console.error("Error getting volatility data:", e);
@@ -275,7 +277,8 @@ class DataProcessor {
         WHERE timestamp >= ${startTime}
       `;
       
-      const rangeResult = await this.db.query(rangeQuery);
+      const conn = await this.db.connect();
+      const rangeResult = await conn.query(rangeQuery);
       const { min_price, max_price } = rangeResult.toArray()[0];
       
       if (min_price === null || max_price === null) {
@@ -309,7 +312,7 @@ class DataProcessor {
         ORDER BY bins.bin_number
       `;
       
-      const result = await this.db.query(distributionQuery);
+      const result = await conn.query(distributionQuery);
       return result.toArray();
     } catch (e) {
       console.error("Error getting price distribution:", e);
@@ -348,7 +351,8 @@ class DataProcessor {
         ORDER BY timestamp
       `;
       
-      const result = await this.db.query(query);
+      const conn = await this.db.connect();
+      const result = await conn.query(query);
       return result.toArray();
     } catch (e) {
       console.error("Error getting moving averages:", e);
