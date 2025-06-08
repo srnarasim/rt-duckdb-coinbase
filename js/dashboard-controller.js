@@ -21,6 +21,15 @@ class DashboardController {
     this.lastUpdateTime = 0;
     this.updateFrequency = 1000; // Update every second
     this.tradeCount = 0;
+    
+    // Track price metrics directly for immediate updates
+    this.priceMetrics = {
+      currentPrice: 0,
+      sessionHigh: 0,
+      sessionLow: Infinity,
+      firstPrice: 0,
+      sessionStartTime: Date.now()
+    };
   }
   
   async initialize() {
@@ -72,6 +81,32 @@ class DashboardController {
       this.lastUpdateTime = Date.now();
       this.updateLastUpdateTime();
       
+      // Update price metrics directly
+      if (data.data && data.data.price) {
+        const price = parseFloat(data.data.price);
+        
+        // Set first price if this is the first trade
+        if (this.priceMetrics.firstPrice === 0) {
+          this.priceMetrics.firstPrice = price;
+        }
+        
+        // Update current price
+        this.priceMetrics.currentPrice = price;
+        
+        // Update session high
+        if (price > this.priceMetrics.sessionHigh) {
+          this.priceMetrics.sessionHigh = price;
+        }
+        
+        // Update session low
+        if (price < this.priceMetrics.sessionLow) {
+          this.priceMetrics.sessionLow = price;
+        }
+        
+        // Update price display immediately
+        this.updatePriceMetricsDisplay();
+      }
+      
       // Add data to processor
       this.dataProcessor.addData(data);
       
@@ -81,6 +116,45 @@ class DashboardController {
       }
     } catch (error) {
       console.error("❌ Error handling live data:", error);
+    }
+  }
+  
+  updatePriceMetricsDisplay() {
+    try {
+      // Update current price
+      const currentPriceElement = document.getElementById("current-price");
+      if (currentPriceElement) {
+        currentPriceElement.textContent = `$${this.priceMetrics.currentPrice.toFixed(2)}`;
+      }
+      
+      // Update session high
+      const sessionHighElement = document.getElementById("session-high");
+      if (sessionHighElement) {
+        sessionHighElement.textContent = `$${this.priceMetrics.sessionHigh.toFixed(2)}`;
+      }
+      
+      // Update session low (only if we have a valid low price)
+      const sessionLowElement = document.getElementById("session-low");
+      if (sessionLowElement && this.priceMetrics.sessionLow !== Infinity) {
+        sessionLowElement.textContent = `$${this.priceMetrics.sessionLow.toFixed(2)}`;
+      }
+      
+      // Calculate and update change percentage
+      const changeElement = document.getElementById("change-percent");
+      if (changeElement && this.priceMetrics.firstPrice > 0) {
+        const changePercent = ((this.priceMetrics.currentPrice - this.priceMetrics.firstPrice) / this.priceMetrics.firstPrice) * 100;
+        changeElement.textContent = `${changePercent.toFixed(2)}%`;
+        
+        // Update color based on change
+        changeElement.classList.remove("positive", "negative");
+        if (changePercent > 0) {
+          changeElement.classList.add("positive");
+        } else if (changePercent < 0) {
+          changeElement.classList.add("negative");
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error updating price metrics display:", error);
     }
   }
   
@@ -144,13 +218,7 @@ class DashboardController {
         tradeCounter.textContent = this.tradeCount;
       }
       
-      // Update last price immediately
-      if (data.data && data.data.price) {
-        const currentPrice = document.getElementById("current-price");
-        if (currentPrice) {
-          currentPrice.textContent = `$${data.data.price.toFixed(2)}`;
-        }
-      }
+      // Price updates are now handled in handleLiveData method
       
       // Throttle chart updates to avoid performance issues
       const now = Date.now();
@@ -167,25 +235,8 @@ class DashboardController {
     if (this.paused) return;
     
     try {
-      // Update stats
-      const stats = await this.dataProcessor.getStats(this.timeframe);
-      
-      // Update UI with stats
-      document.getElementById("current-price").textContent = `$${stats.current_price ? stats.current_price.toFixed(2) : '0.00'}`;
-      document.getElementById("session-high").textContent = `$${stats.session_high ? stats.session_high.toFixed(2) : '0.00'}`;
-      document.getElementById("session-low").textContent = `$${stats.session_low ? stats.session_low.toFixed(2) : '0.00'}`;
-      
-      const changeElement = document.getElementById("change-percent");
-      if (changeElement) {
-        const changePercent = stats.change_percent || 0;
-        changeElement.textContent = `${changePercent.toFixed(2)}%`;
-        changeElement.classList.remove("positive", "negative");
-        if (changePercent > 0) {
-          changeElement.classList.add("positive");
-        } else if (changePercent < 0) {
-          changeElement.classList.add("negative");
-        }
-      }
+      // Note: Price metrics are now updated directly in updatePriceMetricsDisplay()
+      // This method focuses on chart updates only
       
       // Get data for charts
       const priceData = await this.dataProcessor.getPriceData(this.timeframe, this.aggregation);
