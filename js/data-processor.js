@@ -23,6 +23,16 @@ class DataProcessor {
     
     this.initPromise = new Promise(async (resolve, reject) => {
       try {
+        // Wait for DuckDB WASM to be initialized
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        while (typeof duckdb === 'undefined' && attempts < maxAttempts) {
+          console.log(`Waiting for DuckDB WASM to be initialized (attempt ${attempts + 1}/${maxAttempts})...`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          attempts++;
+        }
+        
         // Check if duckdb is available
         if (typeof duckdb === 'undefined') {
           console.error("DuckDB is not defined. Make sure the DuckDB WASM library is properly loaded.");
@@ -30,13 +40,12 @@ class DataProcessor {
           return;
         }
         
-        // No need for bundles with our local implementation
-        // Just create a logger and use the global duckdb object
-        const logger = new duckdb.ConsoleLogger();
-        const worker = null; // No worker needed for our mock implementation
+        // Create a new DuckDB instance
+        const logger = null; // No logger needed
+        const worker = null; // No worker needed
         
         this.db = new duckdb.AsyncDuckDB(logger, worker);
-        await this.db.instantiate(null, null); // No modules needed for our mock implementation
+        await this.db.instantiate();
         
         // Create trades table
         const conn = await this.db.connect();

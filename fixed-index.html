@@ -9,8 +9,40 @@
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/dashboard.css">
   
-  <!-- Local DuckDB WASM Mock Implementation -->
-  <script src="static/duckdb-wasm.js"></script>
+  <!-- DuckDB WASM Implementation -->
+  <script type="module">
+    import init, { init_duckdb } from './static/wasm/rt_duckdb_coinbase.js';
+    
+    // Initialize the WASM module
+    async function initWasm() {
+      await init();
+      
+      // Create global duckdb object
+      window.duckdb = {
+        selectBundle: async function() {
+          return { mainModule: null, pthreadWorker: null };
+        },
+        AsyncDuckDB: class AsyncDuckDB {
+          constructor(logger) {
+            this._instance = init_duckdb();
+          }
+          
+          async instantiate() {
+            await this._instance.instantiate();
+            return this;
+          }
+          
+          async connect() {
+            return await this._instance.connect();
+          }
+        }
+      };
+      
+      console.log("DuckDB WASM initialized");
+    }
+    
+    initWasm().catch(e => console.error("Failed to initialize WASM:", e));
+  </script>
   
   <!-- Observable Plot for visualization -->
   <script src="static/observable-plot.min.js"></script>
