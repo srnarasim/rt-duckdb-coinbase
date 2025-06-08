@@ -124,30 +124,62 @@ async fn main() {
     let static_dir = args.static_dir.clone();
     info!("Serving static files from directory: {}", static_dir);
     
-    // Favicon handler to prevent 404 errors
+    // Favicon handler
     let static_dir_clone = static_dir.clone();
     let favicon_route = warp::path("favicon.ico")
-        .map(move || {
+        .and_then(move || {
             let path = Path::new(&static_dir_clone).join("favicon.ico");
-            if path.exists() {
-                warp::reply::with_header(
-                    warp::reply::html(""),
-                    "Content-Type",
-                    "image/x-icon",
-                )
-            } else {
-                // Return an empty favicon to prevent 404 errors
-                warp::reply::with_header(
-                    warp::reply::html(""),
-                    "Content-Type",
-                    "image/x-icon",
-                )
+            async move {
+                if path.exists() {
+                    match tokio::fs::read(&path).await {
+                        Ok(content) => {
+                            Ok(warp::reply::with_header(
+                                content,
+                                "Content-Type",
+                                "image/x-icon",
+                            ))
+                        },
+                        Err(_) => {
+                            // Return an empty favicon if we can't read the file
+                            Ok(warp::reply::with_header(
+                                warp::reply::html(""),
+                                "Content-Type",
+                                "image/x-icon",
+                            ))
+                        }
+                    }
+                } else {
+                    // Return an empty favicon to prevent 404 errors
+                    Ok(warp::reply::with_header(
+                        warp::reply::html(""),
+                        "Content-Type",
+                        "image/x-icon",
+                    ))
+                }
             }
         });
     
-    // Static file server
+    // Custom handler for JavaScript files to ensure correct MIME type
+    let js_files = warp::path::tail()
+        .and(warp::fs::file(static_dir.clone()))
+        .and_then(|tail: warp::path::Tail, file: warp::fs::File| async move {
+            let path = tail.as_str();
+            if path.ends_with(".js") {
+                // Set the correct MIME type for JavaScript files
+                Ok(warp::reply::with_header(file, "Content-Type", "application/javascript"))
+            } else if path.ends_with(".wasm") {
+                // Set the correct MIME type for WebAssembly files
+                Ok(warp::reply::with_header(file, "Content-Type", "application/wasm"))
+            } else {
+                // For other files, let warp handle the MIME type
+                Ok(file)
+            }
+        });
+    
+    // Static file server with custom MIME type handling
     let static_routes = warp::fs::dir(static_dir)
         .or(favicon_route)
+        .or(js_files)
         .with(cors)
         .with(warp::log("static_server"));
     
