@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     
     // Add authentication if credentials are provided
     if !username.is_empty() {
-        options = options.user_and_password(username.to_string(), password.to_string());
+        options = options.with_auth_credentials(username.to_string(), password.to_string());
     }
     
     // Connect to NATS server with retry
