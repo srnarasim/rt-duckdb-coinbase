@@ -5,16 +5,16 @@ edition = "2021"
 description = "Unified server for rt-duckdb-coinbase"
 
 [dependencies]
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1.28", features = ["full"] }
 warp = "0.3"
 futures = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-chrono = "0.4"
-rand = "0.8"
-log = "0.4"
-env_logger = "0.10"
-clap = { version = "4.5", features = ["derive"] }
-mime_guess = "2.0"
-async-nats = "0.33.0"
-url = "2.5.0"
+chrono = "0.4.24"
+rand = "0.8.5"
+log = "0.4.17"
+env_logger = "0.10.0"
+clap = { version = "4.3.0", features = ["derive"] }
+mime_guess = "2.0.4"
+async-nats = "0.29.0"
+url = "2.3.1"

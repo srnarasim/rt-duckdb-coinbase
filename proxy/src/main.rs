@@ -318,7 +318,7 @@ async fn connect_to_nex_stream(nex_url: String, clients: Clients) -> Result<(), 
     
     // Add authentication if credentials are provided
     if !username.is_empty() {
-        options = options.user_and_password(username.to_string(), password.to_string());
+        options = options.with_auth_credentials(username.to_string(), password.to_string());
     }
     
     // Connect to NATS server
@@ -338,7 +338,7 @@ async fn connect_to_nex_stream(nex_url: String, clients: Clients) -> Result<(), 
     let jetstream = jetstream::new(client.clone());
     
     // Subscribe to market data
-    let mut subscriber = match client.subscribe("market.btc-usd.trades".to_string()).await {
+    let mut subscriber = match client.subscribe("market.btc-usd.trades").await {
         Ok(sub) => {
             info!("Successfully subscribed to market.btc-usd.trades");
             sub
