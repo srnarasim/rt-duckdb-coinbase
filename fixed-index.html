@@ -9,20 +9,8 @@
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/dashboard.css">
   
-  <!-- Import Map for Module Resolution -->
-  <script type="importmap">
-  {
-    "imports": {
-      "apache-arrow": "/static/apache-arrow.js"
-    }
-  }
-  </script>
-  
-  <!-- Apache Arrow (required by DuckDB WASM) -->
-  <script src="static/apache-arrow.js"></script>
-  
-  <!-- Simplified DuckDB WASM Implementation (Mock Mode) -->
-  <script src="static/duckdb-wasm/duckdb-init-simple.js?v=13"></script>
+  <!-- Real DuckDB WASM Implementation (Official CDN Method) -->
+  <script src="static/duckdb-wasm/duckdb-init.js?v=11"></script>
   
   <!-- Observable Plot for visualization -->
   <script src="static/observable-plot.min.js"></script>
