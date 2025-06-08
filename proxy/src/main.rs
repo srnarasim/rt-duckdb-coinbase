@@ -11,8 +11,10 @@ use futures::{StreamExt, SinkExt};
 use serde::{Serialize, Deserialize};
 use rand::{Rng, thread_rng};
 use chrono::Utc;
-use log::{info, error, warn};
+use log::{info, error, warn, debug};
 use clap::Parser;
+use url::Url;
+use async_nats::jetstream;
 
 // Command line arguments
 #[derive(Parser, Debug)]
@@ -79,8 +81,12 @@ async fn main() {
         tokio::spawn(generate_simulated_data(clients_for_generator));
     } else if !args.nex_url.is_empty() {
         info!("Connecting to real NEX Stream at: {}", args.nex_url);
-        // TODO: Implement real NEX Stream connection
-        // This would connect to the actual NEX Stream and forward messages
+        let nex_url = args.nex_url.clone();
+        tokio::spawn(async move {
+            if let Err(e) = connect_to_nex_stream(nex_url, clients_for_generator).await {
+                error!("NEX Stream connection error: {}", e);
+            }
+        });
     } else {
         warn!("No NEX Stream URL provided and simulation disabled. Proxy will only relay WebSocket connections.");
     }
@@ -261,6 +267,101 @@ async fn process_message(msg: Message, client_id: &str, clients: &Clients) -> Re
         }
     }
     
+    Ok(())
+}
+
+// Connect to a real NEX Stream and forward messages to clients
+async fn connect_to_nex_stream(nex_url: String, clients: Clients) -> Result<(), Box<dyn StdError>> {
+    info!("Connecting to NEX Stream at {}", nex_url);
+    
+    // Parse the URL to extract credentials if present
+    let url = Url::parse(&nex_url)?;
+    
+    // Extract username and password if present in the URL
+    let username = url.username();
+    let password = url.password().unwrap_or("");
+    
+    // Build connection options
+    let mut options = async_nats::ConnectOptions::new();
+    
+    // Add authentication if credentials are provided
+    if !username.is_empty() {
+        options = options.user_and_password(username.to_string(), password.to_string());
+    }
+    
+    // Connect to NATS server
+    info!("Establishing connection to NATS server...");
+    let client = match options.connect(&nex_url).await {
+        Ok(client) => {
+            info!("Successfully connected to NATS server");
+            client
+        },
+        Err(e) => {
+            error!("Failed to connect to NATS server: {}", e);
+            return Err(Box::new(e));
+        }
+    };
+    
+    // Create JetStream context if available
+    let jetstream = jetstream::new(client.clone());
+    
+    // Subscribe to market data
+    let mut subscriber = match client.subscribe("market.btc-usd.trades".to_string()).await {
+        Ok(sub) => {
+            info!("Successfully subscribed to market.btc-usd.trades");
+            sub
+        },
+        Err(e) => {
+            error!("Failed to subscribe to market data: {}", e);
+            return Err(Box::new(e));
+        }
+    };
+    
+    // Process incoming messages
+    info!("Listening for messages from NEX Stream...");
+    while let Some(msg) = subscriber.next().await {
+        let payload = String::from_utf8_lossy(&msg.payload);
+        debug!("Received message: {}", payload);
+        
+        // Try to parse the message
+        match serde_json::from_str::<serde_json::Value>(&payload) {
+            Ok(data) => {
+                // Create a NEX Stream message
+                let now = Utc::now();
+                let timestamp = now.timestamp_millis() as u64;
+                
+                let message = NexStreamMessage {
+                    subject: msg.subject.to_string(),
+                    data: data,
+                    timestamp: Some(timestamp),
+                };
+                
+                // Serialize to JSON
+                match serde_json::to_string(&message) {
+                    Ok(message_json) => {
+                        // Send to all subscribed clients
+                        let clients_lock = clients.lock().unwrap();
+                        for (_, client) in clients_lock.iter() {
+                            if client.subscriptions.contains(&message.subject) || 
+                               client.subscriptions.contains(&"*".to_string()) {
+                                if let Err(e) = client.tx.send(Ok(Message::text(&message_json))) {
+                                    error!("Error sending message to client: {}", e);
+                                }
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        error!("Failed to serialize message: {}", e);
+                    }
+                }
+            },
+            Err(e) => {
+                error!("Failed to parse message: {}", e);
+            }
+        }
+    }
+    
+    info!("NEX Stream connection closed");
     Ok(())
 }
 
