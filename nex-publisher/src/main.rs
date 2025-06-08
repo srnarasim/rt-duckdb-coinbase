@@ -73,17 +73,36 @@ async fn main() -> Result<(), Box<dyn Error>> {
         options = options.user_and_password(username.to_string(), password.to_string());
     }
     
-    // Connect to NATS server
-    let client = match options.connect(&args.nats_url).await {
-        Ok(client) => {
-            info!("Successfully connected to NATS server");
-            client
-        },
-        Err(e) => {
-            error!("Failed to connect to NATS server: {}", e);
-            return Err(Box::new(e));
+    // Connect to NATS server with retry
+    let mut retry_count = 0;
+    let max_retries = 5;
+    let mut client = None;
+    
+    while retry_count < max_retries {
+        match options.connect(&args.nats_url).await {
+            Ok(c) => {
+                info!("Successfully connected to NATS server");
+                client = Some(c);
+                break;
+            },
+            Err(e) => {
+                retry_count += 1;
+                error!("Failed to connect to NATS server (attempt {}/{}): {}", 
+                       retry_count, max_retries, e);
+                
+                if retry_count < max_retries {
+                    let backoff = std::time::Duration::from_secs(2);
+                    warn!("Retrying in {:?}...", backoff);
+                    sleep(backoff).await;
+                } else {
+                    error!("Maximum retry attempts reached. Giving up.");
+                    return Err(Box::new(e));
+                }
+            }
         }
-    };
+    }
+    
+    let client = client.unwrap();
     
     // Start publishing simulated data
     publish_simulated_data(

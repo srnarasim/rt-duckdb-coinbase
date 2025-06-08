@@ -19,7 +19,11 @@ echo "Building main application..."
 # Build the NEX publisher
 echo "Building NEX publisher..."
 cd nex-publisher
-cargo build --release
+if ! cargo build --release; then
+  echo "Failed to build NEX publisher. Will use simulation mode instead."
+  USE_SIMULATION="true"
+  USE_LOCAL_NATS="false"
+fi
 cd ..
 
 # Build the unified Rust server
@@ -31,7 +35,10 @@ cd ..
 # Start the local NATS server if needed
 if [ "$USE_LOCAL_NATS" = "true" ]; then
   echo "Starting local NATS server..."
-  ./start-nats.sh
+  if ! ./start-nats.sh; then
+    echo "Failed to start local NATS server. Will use demo NATS server instead."
+    NEX_URL="nats://demo.nats.io:4222"
+  fi
 fi
 
 # Start the NEX publisher if using local NATS
