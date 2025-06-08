@@ -119,24 +119,34 @@ class DashboardController {
     }
   }
   
+  formatPrice(price) {
+    // Format price with thousands separators and 2 decimal places
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(price);
+  }
+
   updatePriceMetricsDisplay() {
     try {
       // Update current price
       const currentPriceElement = document.getElementById("current-price");
       if (currentPriceElement) {
-        currentPriceElement.textContent = `$${this.priceMetrics.currentPrice.toFixed(2)}`;
+        currentPriceElement.textContent = this.formatPrice(this.priceMetrics.currentPrice);
       }
       
       // Update session high
       const sessionHighElement = document.getElementById("session-high");
       if (sessionHighElement) {
-        sessionHighElement.textContent = `$${this.priceMetrics.sessionHigh.toFixed(2)}`;
+        sessionHighElement.textContent = this.formatPrice(this.priceMetrics.sessionHigh);
       }
       
       // Update session low (only if we have a valid low price)
       const sessionLowElement = document.getElementById("session-low");
       if (sessionLowElement && this.priceMetrics.sessionLow !== Infinity) {
-        sessionLowElement.textContent = `$${this.priceMetrics.sessionLow.toFixed(2)}`;
+        sessionLowElement.textContent = this.formatPrice(this.priceMetrics.sessionLow);
       }
       
       // Calculate and update change percentage

@@ -143,6 +143,8 @@ button.paused {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
   width: calc(50% - 10px);
+  overflow: hidden; /* Prevent overflow */
+  position: relative; /* For proper positioning */
 }
 
 .chart-box.full-width {
@@ -157,8 +159,18 @@ button.paused {
 
 .chart {
   width: 100%;
-  height: 100%;
+  height: 300px; /* Fixed height instead of 100% */
   min-height: 200px;
+  max-width: 100%; /* Ensure it doesn't exceed container */
+  overflow: hidden; /* Prevent chart overflow */
+  position: relative;
+}
+
+/* Ensure SVG elements inside charts are properly contained */
+.chart svg {
+  max-width: 100%;
+  height: auto;
+  overflow: visible; /* Allow SVG content to be visible but contained */
 }
 
 /* Footer */
@@ -300,12 +312,40 @@ footer p {
 @media (max-width: 768px) {
   .chart-box {
     width: 100%;
+    padding: 10px; /* Reduce padding on mobile */
+  }
+  
+  .chart {
+    height: 250px; /* Smaller height on mobile */
   }
   
   .controls {
     flex-direction: column;
     align-items: stretch;
   }
+  
+  .stats-container {
+    flex-direction: column;
+  }
+  
+  .stat-card {
+    margin-bottom: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 10px;
+  }
+  
+  .chart {
+    height: 200px; /* Even smaller on very small screens */
+  }
+  
+  .chart-box {
+    padding: 8px;
+  }
+}
   
   .control-group {
     margin: 5px 0;
