@@ -1,4 +1,4 @@
-import initDuckDB from '../static/duckdb-wasm.js';
+import initDuckDB from '/static/duckdb-wasm.js';
 
 let db, conn;
 const rows = [];
