@@ -4,6 +4,9 @@ use web_sys::{MessageEvent, WebSocket, console};
 use serde::{Serialize, Deserialize};
 use serde_json::json;
 
+mod duckdb_wasm;
+pub use duckdb_wasm::*;
+
 // Define NEX Stream message structure
 #[derive(Serialize, Deserialize, Debug)]
 struct NexStreamMessage {
