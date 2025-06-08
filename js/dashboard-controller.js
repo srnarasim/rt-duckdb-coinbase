@@ -110,6 +110,11 @@ class DashboardController {
       // Add data to processor
       this.dataProcessor.addData(data);
       
+      // Also add to in-memory DuckDB for charts
+      if (window.addTradeData) {
+        window.addTradeData(data);
+      }
+      
       // Log trade info (throttled)
       if (this.tradeCount % 10 === 0) {
         console.log(`📊 Trade #${this.tradeCount}: ${data.data.exchange} - $${data.data.price.toFixed(2)} (${data.data.size.toFixed(4)} BTC)`);
