@@ -59,7 +59,7 @@ jobs:
           
           # Create a dist directory for GitHub Pages
           mkdir -p dist
-          cp -r index.html pkg static .nojekyll .htaccess web.config netlify.toml dist/
+          cp -r index.html pkg static css js queries favicon.ico .nojekyll .htaccess web.config netlify.toml dist/
           
           # Create a .nojekyll file in the dist directory to prevent Jekyll processing
           touch dist/.nojekyll
