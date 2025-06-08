@@ -174,6 +174,10 @@ window.initializeDuckDB = async function() {
     isInitialized = true;
     
     console.log("✅ In-memory DuckDB initialized successfully!");
+        
+    // Set global variables that main.js expects
+    window.duckdbInstance = duckdbInstance;
+    window.duckdb = duckdbInstance;
     
     // Dispatch success event
     window.dispatchEvent(new CustomEvent('duckdb-ready', {

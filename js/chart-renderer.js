@@ -86,7 +86,6 @@ class ChartRenderer {
         grid: true
       },
       marks: [
-        Plot.ruleY([0], {stroke: "#ccc", strokeWidth: 1}),
         Plot.line(changes, {
           x: "time",
           y: "change",
@@ -143,8 +142,7 @@ class ChartRenderer {
           y: "count",
           fill: "#9b59b6",
           width: plotData[0].binEnd - plotData[0].binStart
-        }),
-        Plot.ruleY([0])
+        })
       ],
       width: this.container.clientWidth,
       height: 200,

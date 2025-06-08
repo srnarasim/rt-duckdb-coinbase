@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DuckDB Comprehensive Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+    .success { background-color: #d4edda; color: #155724; }
+    .error { background-color: #f8d7da; color: #721c24; }
+    .info { background-color: #d1ecf1; color: #0c5460; }
+    pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    .test-result { margin: 10px 0; padding: 10px; border-left: 4px solid #007bff; }
+    button { padding: 10px 20px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background-color: #0056b3; }
+  </style>
+</head>
+<body>
+  <h1>DuckDB WASM Comprehensive Test Suite</h1>
+  
+  <div class="test-section info">
+    <h2>Test Status</h2>
+    <div id="status">Initializing...</div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test Controls</h2>
+    <button onclick="runAllTests()">Run All Tests</button>
+    <button onclick="runPerformanceTest()">Performance Test</button>
+    <button onclick="runDataIntegrityTest()">Data Integrity Test</button>
+    <button onclick="clearResults()">Clear Results</button>
+  </div>
+  
+  <div id="results"></div>
+  
+  <script src="static/duckdb-wasm/duckdb-init-modern.js?v=2"></script>
+  
+  <script>
+    const statusDiv = document.getElementById('status');
+    const resultsDiv = document.getElementById('results');
+    let testResults = [];
+    
+    function updateStatus(message, type = 'info') {
+      statusDiv.innerHTML = `<span class="${type}">${message}</span>`;
+    }
+    
+    function addTestResult(testName, result, details = '', isError = false) {
+      const div = document.createElement('div');
+      div.className = `test-section ${isError ? 'error' : 'success'}`;
+      div.innerHTML = `
+        <h3>${testName}</h3>
+        <p><strong>Result:</strong> ${result}</p>
+        ${details ? `<pre>${details}</pre>` : ''}
+      `;
+      resultsDiv.appendChild(div);
+      testResults.push({ testName, result, details, isError });
+    }
+    
+    function clearResults() {
+      resultsDiv.innerHTML = '';
+      testResults = [];
+    }
+    
+    async function runBasicTests() {
+      updateStatus('Running basic tests...', 'info');
+      
+      try {
+        // Test 1: Basic query
+        const result1 = await window.duckdbConnection.query('SELECT 42 as answer, \'Hello DuckDB\' as message');
+        const data1 = result1.toArray();
+        addTestResult('Basic Query', 'PASSED', JSON.stringify(data1, null, 2));
+        
+        // Test 2: Math operations
+        const result2 = await window.duckdbConnection.query('SELECT 2 + 2 as sum, 10 * 5 as product, SQRT(16) as sqrt');
+        const data2 = result2.toArray();
+        addTestResult('Math Operations', 'PASSED', JSON.stringify(data2, null, 2));
+        
+        // Test 3: String operations
+        const result3 = await window.duckdbConnection.query('SELECT UPPER(\'hello\') as upper, LENGTH(\'test\') as length');
+        const data3 = result3.toArray();
+        addTestResult('String Operations', 'PASSED', JSON.stringify(data3, null, 2));
+        
+        // Test 4: Date operations
+        const result4 = await window.duckdbConnection.query('SELECT CURRENT_TIMESTAMP as now, DATE \'2024-01-01\' as date');
+        const data4 = result4.toArray();
+        addTestResult('Date Operations', 'PASSED', JSON.stringify(data4, null, 2));
+        
+      } catch (error) {
+        addTestResult('Basic Tests', 'FAILED', error.message, true);
+      }
+    }
+    
+    async function runTableTests() {
+      updateStatus('Running table tests...', 'info');
+      
+      try {
+        // Test 1: Create table
+        await window.duckdbConnection.query('DROP TABLE IF EXISTS test_table');
+        await window.duckdbConnection.query(`
+          CREATE TABLE test_table (
+            id INTEGER,
+            name VARCHAR,
+            price DECIMAL(10,2),
+            created_at TIMESTAMP
+          )
+        `);
+        addTestResult('Table Creation', 'PASSED', 'Table created successfully');
+        
+        // Test 2: Insert data
+        await window.duckdbConnection.query(`
+          INSERT INTO test_table VALUES 
+          (1, 'Item A', 10.50, '2024-01-01 10:00:00'),
+          (2, 'Item B', 25.75, '2024-01-01 11:00:00'),
+          (3, 'Item C', 15.25, '2024-01-01 12:00:00')
+        `);
+        addTestResult('Data Insertion', 'PASSED', '3 rows inserted');
+        
+        // Test 3: Select data
+        const result = await window.duckdbConnection.query('SELECT * FROM test_table ORDER BY id');
+        const data = result.toArray();
+        addTestResult('Data Selection', 'PASSED', JSON.stringify(data, null, 2));
+        
+        // Test 4: Aggregations
+        const aggResult = await window.duckdbConnection.query(`
+          SELECT 
+            COUNT(*) as count,
+            AVG(price) as avg_price,
+            MAX(price) as max_price,
+            MIN(price) as min_price
+          FROM test_table
+        `);
+        const aggData = aggResult.toArray();
+        addTestResult('Aggregations', 'PASSED', JSON.stringify(aggData, null, 2));
+        
+        // Test 5: Window functions
+        const windowResult = await window.duckdbConnection.query(`
+          SELECT 
+            name,
+            price,
+            ROW_NUMBER() OVER (ORDER BY price) as rank,
+            LAG(price) OVER (ORDER BY price) as prev_price
+          FROM test_table
+        `);
+        const windowData = windowResult.toArray();
+        addTestResult('Window Functions', 'PASSED', JSON.stringify(windowData, null, 2));
+        
+      } catch (error) {
+        addTestResult('Table Tests', 'FAILED', error.message, true);
+      }
+    }
+    
+    async function runPerformanceTest() {
+      updateStatus('Running performance test...', 'info');
+      
+      try {
+        // Create a larger dataset
+        await window.duckdbConnection.query('DROP TABLE IF EXISTS perf_test');
+        await window.duckdbConnection.query(`
+          CREATE TABLE perf_test AS 
+          SELECT 
+            i as id,
+            'Item ' || i as name,
+            RANDOM() * 100 as price,
+            CURRENT_TIMESTAMP + INTERVAL (i) SECOND as created_at
+          FROM range(1000) t(i)
+        `);
+        
+        const start = performance.now();
+        
+        // Complex query with joins and aggregations
+        const result = await window.duckdbConnection.query(`
+          SELECT 
+            COUNT(*) as total_records,
+            AVG(price) as avg_price,
+            STDDEV(price) as price_stddev,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price) as median_price
+          FROM perf_test
+        `);
+        
+        const end = performance.now();
+        const duration = end - start;
+        
+        const data = result.toArray();
+        addTestResult('Performance Test (1000 records)', 'PASSED', 
+          `Query completed in ${duration.toFixed(2)}ms\n${JSON.stringify(data, null, 2)}`);
+        
+      } catch (error) {
+        addTestResult('Performance Test', 'FAILED', error.message, true);
+      }
+    }
+    
+    async function runDataIntegrityTest() {
+      updateStatus('Running data integrity test...', 'info');
+      
+      try {
+        // Test transactions and data consistency
+        await window.duckdbConnection.query('DROP TABLE IF EXISTS integrity_test');
+        await window.duckdbConnection.query(`
+          CREATE TABLE integrity_test (
+            id INTEGER PRIMARY KEY,
+            value INTEGER
+          )
+        `);
+        
+        // Insert test data
+        for (let i = 1; i <= 100; i++) {
+          await window.duckdbConnection.query(`INSERT INTO integrity_test VALUES (${i}, ${i * 10})`);
+        }
+        
+        // Verify data integrity
+        const countResult = await window.duckdbConnection.query('SELECT COUNT(*) as count FROM integrity_test');
+        const count = countResult.toArray()[0].count;
+        
+        const sumResult = await window.duckdbConnection.query('SELECT SUM(value) as sum FROM integrity_test');
+        const sum = sumResult.toArray()[0].sum;
+        
+        const expectedSum = (100 * 101 / 2) * 10; // Sum of 1-100 * 10
+        
+        if (count === 100 && sum === expectedSum) {
+          addTestResult('Data Integrity', 'PASSED', 
+            `Count: ${count}, Sum: ${sum}, Expected Sum: ${expectedSum}`);
+        } else {
+          addTestResult('Data Integrity', 'FAILED', 
+            `Count: ${count} (expected 100), Sum: ${sum} (expected ${expectedSum})`, true);
+        }
+        
+      } catch (error) {
+        addTestResult('Data Integrity Test', 'FAILED', error.message, true);
+      }
+    }
+    
+    async function runAllTests() {
+      clearResults();
+      updateStatus('Running comprehensive test suite...', 'info');
+      
+      try {
+        await runBasicTests();
+        await runTableTests();
+        await runPerformanceTest();
+        await runDataIntegrityTest();
+        
+        const totalTests = testResults.length;
+        const passedTests = testResults.filter(t => !t.isError).length;
+        const failedTests = totalTests - passedTests;
+        
+        updateStatus(`Tests completed: ${passedTests}/${totalTests} passed, ${failedTests} failed`, 
+          failedTests === 0 ? 'success' : 'error');
+        
+      } catch (error) {
+        updateStatus('Test suite failed: ' + error.message, 'error');
+      }
+    }
+    
+    // Wait for DuckDB to be ready
+    window.addEventListener('duckdb-ready', () => {
+      updateStatus('DuckDB ready! Click "Run All Tests" to start testing.', 'success');
+    });
+    
+    window.addEventListener('duckdb-error', (event) => {
+      updateStatus('DuckDB initialization failed: ' + event.detail.error, 'error');
+    });
+    
+    // Auto-run basic tests when ready
+    setTimeout(() => {
+      if (window.duckdbConnection) {
+        updateStatus('DuckDB ready! Running basic tests automatically...', 'info');
+        runBasicTests();
+      }
+    }, 2000);
+  </script>
+</body>
+</html>
