@@ -16,14 +16,7 @@ fi
 echo "Building main application..."
 ./build.sh
 
-# Build the simple publisher
-echo "Building simple publisher..."
-cd simple-publisher
-if ! cargo build --release; then
-  echo "Failed to build simple publisher. Will use simulation mode instead."
-  USE_SIMULATION="true"
-fi
-cd ..
+# Simple publisher build removed - no longer needed
 
 # Build the unified Rust server
 echo "Building unified Rust server..."
@@ -40,14 +33,7 @@ if [ "$USE_LOCAL_NATS" = "true" ]; then
   fi
 fi
 
-# Start the simple publisher instead of NEX publisher
-echo "Starting simple publisher..."
-RUST_LOG=info ./simple-publisher/target/release/simple-publisher &
-PUBLISHER_PID=$!
-echo "Simple publisher started with PID: $PUBLISHER_PID"
-
-# Give the publisher a moment to connect
-sleep 2
+# Simple publisher startup removed - no longer needed
 
 # Start the unified Rust server
 echo "Starting unified Rust server..."
@@ -62,8 +48,4 @@ else
   RUST_LOG=info ./target/release/rt-duckdb-coinbase-server --nex-url "$NEX_URL" --proxy-port 3030 --http-port 54572 --static-dir ".."
 fi
 
-# Clean up the publisher when the server exits
-if [ -n "$PUBLISHER_PID" ]; then
-  echo "Stopping publisher..."
-  kill $PUBLISHER_PID
-fi
+# Simple publisher cleanup removed - no longer needed
