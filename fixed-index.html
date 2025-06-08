@@ -339,52 +339,38 @@
     // Make the compatibility module available globally
     window.CompatibilityModule = CompatibilityModule;
     
-    // Try multiple possible paths for the WebAssembly module
-    const possiblePaths = [
-      './pkg/rt_duckdb_coinbase.js',
-      '../pkg/rt_duckdb_coinbase.js',
-      '/pkg/rt_duckdb_coinbase.js',
-      'pkg/rt_duckdb_coinbase.js',
-      '/rt-duckdb-coinbase/pkg/rt_duckdb_coinbase.js'
-    ];
+    // Use a direct path to the WebAssembly module
+    // This avoids issues with relative paths and MIME types
+    const modulePath = './pkg/rt_duckdb_coinbase.js';
     
-    // Don't add dynamic path based on current location as it causes MIME type issues
-    // Instead, rely on the relative paths in the possiblePaths array
+    console.log(`Loading WebAssembly module from: ${modulePath}`);
     
-    // Function to try loading from a path
-    async function tryLoadModule(path) {
-      console.log(`Trying to load WebAssembly module from: ${path}`);
-      try {
-        const module = await import(path);
-        console.log(`Successfully loaded module from: ${path}`);
-        return module;
-      } catch (err) {
-        console.warn(`Failed to load from ${path}:`, err);
-        return null;
-      }
-    }
-    
-    // Try each path in sequence
-    async function loadModule() {
-      for (const path of possiblePaths) {
-        const module = await tryLoadModule(path);
-        if (module) {
-          // Start the application
-          module.default();
-          return true;
-        }
-      }
-      
-      // If we get here, all paths failed
-      console.error('Failed to load WebAssembly module from all possible paths');
-      document.querySelectorAll('.chart').forEach(chart => {
-        chart.innerHTML = '<p style="color: red;">Failed to load WebAssembly module. Please check the console for errors.</p>';
+    // Import the module
+    import(modulePath)
+      .then(module => {
+        console.log(`Successfully loaded module from: ${modulePath}`);
+        // Start the application
+        module.default();
+      })
+      .catch(err => {
+        console.error(`Failed to load module from ${modulePath}:`, err);
+        
+        // Fallback to an alternative path
+        const fallbackPath = 'pkg/rt_duckdb_coinbase.js';
+        console.log(`Trying fallback path: ${fallbackPath}`);
+        
+        return import(fallbackPath)
+          .then(module => {
+            console.log(`Successfully loaded module from fallback: ${fallbackPath}`);
+            module.default();
+          })
+          .catch(err2 => {
+            console.error(`Fallback also failed: ${err2}`);
+            document.querySelectorAll('.chart').forEach(chart => {
+              chart.innerHTML = '<p style="color: red;">Failed to load WebAssembly module. Please check the console for errors.</p>';
+            });
+          });
       });
-      return false;
-    }
-    
-    // Start the loading process
-    loadModule();
   </script>
 
   <footer>

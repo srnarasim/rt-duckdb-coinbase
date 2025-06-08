@@ -124,40 +124,18 @@ async fn main() {
     let static_dir = args.static_dir.clone();
     info!("Serving static files from directory: {}", static_dir);
     
-    // Favicon handler
+    // Favicon handler - simplified approach
     let static_dir_clone = static_dir.clone();
+    let favicon_path = Path::new(&static_dir_clone).join("favicon.ico");
+    let favicon_path_str = favicon_path.to_string_lossy().to_string();
+    
+    info!("Favicon path: {}", favicon_path_str);
+    
+    // Create a simple route that serves the favicon file directly
     let favicon_route = warp::path("favicon.ico")
-        .and_then(move || {
-            let path = Path::new(&static_dir_clone).join("favicon.ico");
-            async move {
-                if path.exists() {
-                    match tokio::fs::read(&path).await {
-                        Ok(content) => {
-                            Ok(warp::reply::with_header(
-                                content,
-                                "Content-Type",
-                                "image/x-icon",
-                            ))
-                        },
-                        Err(_) => {
-                            // Return an empty favicon if we can't read the file
-                            Ok(warp::reply::with_header(
-                                warp::reply::html(""),
-                                "Content-Type",
-                                "image/x-icon",
-                            ))
-                        }
-                    }
-                } else {
-                    // Return an empty favicon to prevent 404 errors
-                    Ok(warp::reply::with_header(
-                        warp::reply::html(""),
-                        "Content-Type",
-                        "image/x-icon",
-                    ))
-                }
-            }
-        });
+        .and(warp::get())
+        .and(warp::fs::file(favicon_path))
+        .with(warp::reply::with::header("Content-Type", "image/x-icon"));
     
     // Custom handler for JavaScript files to ensure correct MIME type
     let js_files = warp::path::tail()
