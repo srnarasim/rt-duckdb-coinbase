@@ -255,10 +255,19 @@ class DashboardController {
       
       // Get data for charts
       const priceData = await this.dataProcessor.getPriceData(this.timeframe, this.aggregation);
+      console.log("📊 Dashboard: priceData:", priceData ? priceData.length : 'null');
+      
       const volatilityData = await this.dataProcessor.getVolatilityData(this.timeframe);
+      console.log("📊 Dashboard: volatilityData:", volatilityData);
+      
       const distributionData = await this.dataProcessor.getPriceDistribution(this.timeframe);
+      console.log("📊 Dashboard: distributionData:", distributionData ? distributionData.length : 'null');
+      
       const movingAveragesData = await this.dataProcessor.getMovingAverages(this.timeframe);
+      console.log("📊 Dashboard: movingAveragesData:", movingAveragesData ? movingAveragesData.length : 'null');
+      
       const volumeData = await this.dataProcessor.getVolumeData(this.timeframe);
+      console.log("📊 Dashboard: volumeData:", volumeData ? volumeData.length : 'null');
       
       // Update charts
       this.charts.price.renderPriceChart(priceData);

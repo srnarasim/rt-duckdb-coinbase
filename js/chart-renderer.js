@@ -57,9 +57,15 @@ class ChartRenderer {
   }
   
   renderVolatilityChart(data, volatilityData) {
+    console.log("🔍 renderVolatilityChart called with:", data ? data.length : 'null', "data points");
+    console.log("🔍 volatilityData:", volatilityData);
+    console.log("🔍 Plot object:", typeof Plot);
+    console.log("🔍 Plot.line:", typeof Plot.line);
+    
     this.clearChart();
     
     if (!data || data.length === 0) {
+      console.log("⚠️ No data for volatility chart");
       this.showNoDataMessage();
       return;
     }
@@ -75,45 +81,59 @@ class ChartRenderer {
     }
     
     // Create volatility chart
-    this.chart = Plot.plot({
-      y: {
-        grid: true,
-        label: "Price Change (%)"
-      },
-      x: {
-        type: "time",
-        label: "Time",
-        grid: true
-      },
-      marks: [
-        Plot.line(changes, {
-          x: "time",
-          y: "change",
-          stroke: d => d.change >= 0 ? "#2ecc71" : "#e74c3c",
-          strokeWidth: 1.5
-        }),
-        Plot.text([{x: new Date(data[data.length-1].timestamp), y: 0}], {
-          text: d => `Volatility: ${volatilityData.volatility.toFixed(4)}%`,
-          dx: -10,
-          dy: -10,
-          fontSize: 12
-        })
-      ],
-      width: this.container.clientWidth,
-      height: 200,
-      marginLeft: 60,
-      marginRight: 40,
-      marginBottom: 40,
-      marginTop: 40
-    });
+    console.log("🔍 Creating volatility chart with changes:", changes.length, "points");
+    
+    try {
+      this.chart = Plot.plot({
+        y: {
+          grid: true,
+          label: "Price Change (%)"
+        },
+        x: {
+          type: "time",
+          label: "Time",
+          grid: true
+        },
+        marks: [
+          Plot.line(changes, {
+            x: "time",
+            y: "change",
+            stroke: d => d.change >= 0 ? "#2ecc71" : "#e74c3c",
+            strokeWidth: 1.5
+          }),
+          Plot.text([{x: new Date(data[data.length-1].timestamp), y: 0}], {
+            text: d => `Volatility: ${volatilityData.volatility.toFixed(4)}%`,
+            dx: -10,
+            dy: -10,
+            fontSize: 12
+          })
+        ],
+        width: this.container.clientWidth,
+        height: 200,
+        marginLeft: 60,
+        marginRight: 40,
+        marginBottom: 40,
+        marginTop: 40
+      });
+      
+      console.log("✅ Volatility chart created successfully:", this.chart);
+    } catch (e) {
+      console.error("❌ Error creating volatility chart:", e);
+      this.showNoDataMessage();
+      return;
+    }
     
     this.container.appendChild(this.chart);
   }
   
   renderDistributionChart(distributionData) {
+    console.log("🔍 renderDistributionChart called with:", distributionData ? distributionData.length : 'null', "data points");
+    console.log("🔍 distributionData:", distributionData);
+    
     this.clearChart();
     
     if (!distributionData || distributionData.length === 0) {
+      console.log("⚠️ No data for distribution chart");
       this.showNoDataMessage();
       return;
     }
@@ -127,30 +147,40 @@ class ChartRenderer {
     }));
     
     // Create distribution chart
-    this.chart = Plot.plot({
-      y: {
-        grid: true,
-        label: "Frequency"
-      },
-      x: {
-        label: "Price (USD)",
-        grid: true
-      },
-      marks: [
-        Plot.barY(plotData, {
-          x: "binMiddle",
-          y: "count",
-          fill: "#9b59b6",
-          width: plotData[0].binEnd - plotData[0].binStart
-        })
-      ],
-      width: this.container.clientWidth,
-      height: 200,
-      marginLeft: 60,
-      marginRight: 40,
-      marginBottom: 40,
-      marginTop: 40
-    });
+    console.log("🔍 Creating distribution chart with plotData:", plotData.length, "points");
+    
+    try {
+      this.chart = Plot.plot({
+        y: {
+          grid: true,
+          label: "Frequency"
+        },
+        x: {
+          label: "Price (USD)",
+          grid: true
+        },
+        marks: [
+          Plot.barY(plotData, {
+            x: "binMiddle",
+            y: "count",
+            fill: "#9b59b6",
+            width: plotData[0].binEnd - plotData[0].binStart
+          })
+        ],
+        width: this.container.clientWidth,
+        height: 200,
+        marginLeft: 60,
+        marginRight: 40,
+        marginBottom: 40,
+        marginTop: 40
+      });
+      
+      console.log("✅ Distribution chart created successfully:", this.chart);
+    } catch (e) {
+      console.error("❌ Error creating distribution chart:", e);
+      this.showNoDataMessage();
+      return;
+    }
     
     this.container.appendChild(this.chart);
   }
