@@ -10,6 +10,79 @@ class DataProcessor {
     this.dataBuffer = [];
     this.bufferSize = 1000; // Maximum number of trades to keep in memory
     this.processingData = false;
+    this.isRealDuckDB = false;
+  }
+  
+  async waitForDuckDB() {
+    return new Promise((resolve, reject) => {
+      // Check if DuckDB is already ready
+      if (window.duckdbInstance) {
+        resolve();
+        return;
+      }
+      
+      // Listen for DuckDB ready event
+      const onReady = (event) => {
+        console.log("📦 DuckDB ready event received:", event.detail);
+        window.removeEventListener('duckdb-ready', onReady);
+        window.removeEventListener('duckdb-error', onError);
+        resolve();
+      };
+      
+      const onError = (event) => {
+        console.error("❌ DuckDB error event received:", event.detail);
+        window.removeEventListener('duckdb-ready', onReady);
+        window.removeEventListener('duckdb-error', onError);
+        reject(new Error(event.detail.error));
+      };
+      
+      window.addEventListener('duckdb-ready', onReady);
+      window.addEventListener('duckdb-error', onError);
+      
+      // Timeout after 30 seconds
+      setTimeout(() => {
+        window.removeEventListener('duckdb-ready', onReady);
+        window.removeEventListener('duckdb-error', onError);
+        reject(new Error("Timeout waiting for DuckDB to initialize"));
+      }, 30000);
+    });
+  }
+  
+  async createSchema() {
+    try {
+      const conn = await this.db.connect();
+      
+      // Create trades table with proper schema for both real and mock DuckDB
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS trades (
+          id INTEGER,
+          timestamp TIMESTAMP,
+          price DECIMAL(18,8),
+          size DECIMAL(18,8),
+          side VARCHAR(4),
+          exchange VARCHAR(20),
+          pair VARCHAR(10)
+        )
+      `);
+      
+      // Create indexes for better performance (only for real DuckDB)
+      if (this.isRealDuckDB) {
+        try {
+          await conn.query(`CREATE INDEX IF NOT EXISTS idx_trades_timestamp ON trades(timestamp)`);
+          await conn.query(`CREATE INDEX IF NOT EXISTS idx_trades_pair ON trades(pair)`);
+          console.log("📊 Created database indexes for real DuckDB");
+        } catch (indexError) {
+          console.warn("⚠️ Could not create indexes (not critical):", indexError.message);
+        }
+      }
+      
+      await conn.close();
+      console.log("📊 Database schema created successfully");
+      
+    } catch (error) {
+      console.error("❌ Error creating database schema:", error);
+      throw error;
+    }
   }
   
   async initialize() {
@@ -19,48 +92,23 @@ class DataProcessor {
       return this.initPromise;
     }
     
-    console.log("Initializing DuckDB...");
+    console.log("Initializing DataProcessor with DuckDB...");
     
     this.initPromise = new Promise(async (resolve, reject) => {
       try {
-        // Wait for DuckDB WASM to be initialized
-        let attempts = 0;
-        const maxAttempts = 10;
+        // Wait for DuckDB to be ready (either real or mock)
+        await this.waitForDuckDB();
         
-        while (typeof duckdb === 'undefined' && attempts < maxAttempts) {
-          console.log(`Waiting for DuckDB WASM to be initialized (attempt ${attempts + 1}/${maxAttempts})...`);
-          await new Promise(resolve => setTimeout(resolve, 500));
-          attempts++;
-        }
+        // Use the globally available DuckDB instance
+        this.db = window.duckdbInstance;
+        this.isRealDuckDB = window.duckdbReal || false;
         
-        // Check if duckdb is available
-        if (typeof duckdb === 'undefined') {
-          console.error("DuckDB is not defined. Make sure the DuckDB WASM library is properly loaded.");
-          reject(new Error("DuckDB is not defined"));
-          return;
-        }
+        console.log(`📊 DataProcessor using ${this.isRealDuckDB ? 'Real' : 'Mock'} DuckDB`);
         
-        // Create a new DuckDB instance
-        const logger = null; // No logger needed
-        const worker = null; // No worker needed
+        // Create database schema
+        await this.createSchema();
         
-        this.db = new duckdb.AsyncDuckDB(logger, worker);
-        await this.db.instantiate();
-        
-        // Create trades table
-        const conn = await this.db.connect();
-        await conn.query(`
-          CREATE TABLE trades (
-            price DOUBLE,
-            size DOUBLE,
-            side VARCHAR,
-            exchange VARCHAR,
-            pair VARCHAR,
-            timestamp BIGINT
-          )
-        `);
-        
-        console.log("DuckDB initialized successfully");
+        console.log("✅ DataProcessor initialized successfully");
         this.initialized = true;
         resolve();
       } catch (e) {
@@ -70,6 +118,43 @@ class DataProcessor {
     });
     
     return this.initPromise;
+  }
+  
+  async insertTradeData(trades) {
+    try {
+      const conn = await this.db.connect();
+      
+      if (this.isRealDuckDB) {
+        // Use parameterized queries for real DuckDB
+        for (const trade of trades) {
+          await conn.query(`
+            INSERT INTO trades (timestamp, price, size, side, exchange, pair)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, [
+            new Date(trade.timestamp),
+            parseFloat(trade.data.price),
+            parseFloat(trade.data.size),
+            trade.data.side,
+            trade.data.exchange || 'coinbase',
+            trade.data.pair || 'BTC-USD'
+          ]);
+        }
+      } else {
+        // Use string concatenation for mock DuckDB (simpler)
+        const values = trades.map(d => {
+          return `(${d.timestamp}, ${d.data.price}, ${d.data.size}, '${d.data.side}', '${d.data.exchange || 'coinbase'}', '${d.data.pair || 'BTC-USD'}')`;
+        }).join(', ');
+        
+        await conn.query(`INSERT INTO trades (timestamp, price, size, side, exchange, pair) VALUES ${values}`);
+      }
+      
+      await conn.close();
+      console.log(`📊 Inserted ${trades.length} trades into ${this.isRealDuckDB ? 'Real' : 'Mock'} DuckDB`);
+      
+    } catch (error) {
+      console.error("❌ Error inserting trade data:", error);
+      throw error;
+    }
   }
   
   async addData(data) {
@@ -97,12 +182,7 @@ class DataProcessor {
         
         // Insert new data
         if (this.dataBuffer.length > 0) {
-          const values = this.dataBuffer.map(d => {
-            return `(${d.data.price}, ${d.data.size}, '${d.data.side}', '${d.data.exchange}', '${d.data.pair}', ${d.timestamp})`;
-          }).join(', ');
-          
-          const conn = await this.db.connect();
-          await conn.query(`INSERT INTO trades VALUES ${values}`);
+          await this.insertTradeData(this.dataBuffer);
           this.dataBuffer = [];
         }
       } catch (e) {
@@ -123,25 +203,63 @@ class DataProcessor {
   async getStats(timeframe) {
     await this.initialize();
     
-    // Calculate time window
-    const now = Date.now();
-    const timeWindow = timeframe * 60 * 1000; // Convert minutes to milliseconds
-    const startTime = now - timeWindow;
-    
     try {
-      // Query for stats
       const conn = await this.db.connect();
-      const result = await conn.query(`
-        SELECT 
-          MAX(price) AS session_high,
-          MIN(price) AS session_low,
-          FIRST_VALUE(price) OVER (ORDER BY timestamp) AS first_price,
-          LAST_VALUE(price) OVER (ORDER BY timestamp ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS current_price
-        FROM trades
-        WHERE timestamp >= ${startTime}
-      `);
+      let result;
       
-      const stats = result.toArray()[0];
+      if (this.isRealDuckDB) {
+        // Use advanced SQL for real DuckDB
+        result = await conn.query(`
+          SELECT 
+            MAX(price) AS session_high,
+            MIN(price) AS session_low,
+            FIRST(price ORDER BY timestamp) AS first_price,
+            LAST(price ORDER BY timestamp) AS current_price,
+            COUNT(*) AS trade_count,
+            AVG(price) AS avg_price
+          FROM trades
+          WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '${timeframe} MINUTE'
+        `);
+      } else {
+        // Use simpler SQL for mock DuckDB
+        const now = Date.now();
+        const timeWindow = timeframe * 60 * 1000;
+        const startTime = now - timeWindow;
+        
+        result = await conn.query(`
+          SELECT 
+            MAX(price) AS session_high,
+            MIN(price) AS session_low,
+            COUNT(*) AS trade_count,
+            AVG(price) AS avg_price
+          FROM trades
+          WHERE timestamp >= ${startTime}
+        `);
+        
+        // Get first and last prices separately for mock
+        const firstResult = await conn.query(`
+          SELECT price AS first_price FROM trades 
+          WHERE timestamp >= ${startTime} 
+          ORDER BY timestamp ASC LIMIT 1
+        `);
+        
+        const lastResult = await conn.query(`
+          SELECT price AS current_price FROM trades 
+          WHERE timestamp >= ${startTime} 
+          ORDER BY timestamp DESC LIMIT 1
+        `);
+        
+        const stats = result.toArray()[0] || {};
+        const firstPrice = firstResult.toArray()[0]?.first_price || 0;
+        const currentPrice = lastResult.toArray()[0]?.current_price || 0;
+        
+        stats.first_price = firstPrice;
+        stats.current_price = currentPrice;
+        
+        result = { toArray: () => [stats] };
+      }
+      
+      const stats = result.toArray()[0] || {};
       
       // Calculate change percentage
       if (stats.first_price && stats.current_price) {
@@ -150,15 +268,19 @@ class DataProcessor {
         stats.change_percent = 0;
       }
       
+      await conn.close();
       return stats;
+      
     } catch (e) {
-      console.error("Error getting stats:", e);
+      console.error("❌ Error getting stats:", e);
       return {
         session_high: 0,
         session_low: 0,
         first_price: 0,
         current_price: 0,
-        change_percent: 0
+        change_percent: 0,
+        trade_count: 0,
+        avg_price: 0
       };
     }
   }
