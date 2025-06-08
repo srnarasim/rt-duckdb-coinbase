@@ -1,0 +1,15 @@
+{
+  "name": "rt-duckdb-coinbase",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "rt_duckdb_coinbase_bg.wasm",
+    "rt_duckdb_coinbase.js",
+    "rt_duckdb_coinbase.d.ts"
+  ],
+  "main": "rt_duckdb_coinbase.js",
+  "types": "rt_duckdb_coinbase.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
