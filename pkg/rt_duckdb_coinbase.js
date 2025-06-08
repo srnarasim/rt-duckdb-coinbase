@@ -1,7 +1,22 @@
 // JavaScript bindings for the Rust WASM module
 async function init() {
+  console.log("Initializing WebAssembly module...");
+  
   // Import the Observable Plot library
   const Plot = window.Plot;
+  if (!Plot) {
+    console.error("Observable Plot library not found. Charts may not render correctly.");
+  } else {
+    console.log("Observable Plot library loaded successfully.");
+  }
+  
+  // Check if we're using the new or old HTML structure
+  let useCompatibilityMode = false;
+  if (window.CompatibilityModule) {
+    const { isNewStructure, isOldStructure } = window.CompatibilityModule.checkStructure();
+    useCompatibilityMode = !isNewStructure && isOldStructure;
+    console.log("Using compatibility mode:", useCompatibilityMode);
+  }
   
   // Create a mock WebSocket connection to Coinbase
   console.log("Initializing WebSocket connection to Coinbase...");
@@ -11,6 +26,8 @@ async function init() {
   
   // Start simulating data
   startDataSimulation();
+  
+  console.log("WebAssembly module initialized successfully!");
 }
 
 // Global data store
@@ -68,19 +85,38 @@ function startDataSimulation() {
 
 // Draw the chart with the provided data
 function drawChart(data) {
-  const chartElement = document.getElementById('chart');
+  // Check if we should use the compatibility module
+  if (window.CompatibilityModule) {
+    const { isNewStructure, isOldStructure } = window.CompatibilityModule.checkStructure();
+    
+    if (isOldStructure) {
+      // Use the compatibility module to draw in the old structure
+      console.log("Using compatibility module to draw chart");
+      window.CompatibilityModule.legacyDrawChart(data);
+      return;
+    }
+  }
+  
+  // Try to find the chart element in different possible locations
+  let chartElement = document.getElementById('chart');
   if (!chartElement) {
-    console.error('Chart element not found');
+    chartElement = document.getElementById('price-chart');
+  }
+  
+  if (!chartElement) {
+    console.error('Chart element not found (tried #chart and #price-chart)');
     return;
   }
+  
+  console.log("Drawing chart with", data.length, "data points");
   
   // Clear previous content
   chartElement.innerHTML = '';
   
   // Create canvas for drawing
   const canvas = document.createElement('canvas');
-  canvas.width = 800;
-  canvas.height = 400;
+  canvas.width = chartElement.clientWidth || 800;
+  canvas.height = chartElement.clientHeight || 400;
   chartElement.appendChild(canvas);
   
   const ctx = canvas.getContext('2d');
@@ -158,6 +194,27 @@ function drawChart(data) {
     ctx.textAlign = 'left';
     ctx.font = 'bold 16px Arial';
     ctx.fillText(`Current Price: $${currentPrice.toFixed(2)}`, 60, 40);
+    
+    // Update stats if they exist
+    const currentPriceElement = document.getElementById('current-price');
+    const priceChangeElement = document.getElementById('price-change');
+    const sessionHighElement = document.getElementById('session-high');
+    const sessionLowElement = document.getElementById('session-low');
+    
+    if (currentPriceElement || priceChangeElement || sessionHighElement || sessionLowElement) {
+      const initialPrice = data[0].price;
+      const priceChange = ((currentPrice - initialPrice) / initialPrice) * 100;
+      const sessionHigh = Math.max(...data.map(d => d.price));
+      const sessionLow = Math.min(...data.map(d => d.price));
+      
+      if (currentPriceElement) currentPriceElement.textContent = `$${currentPrice.toFixed(2)}`;
+      if (priceChangeElement) {
+        priceChangeElement.textContent = `${priceChange.toFixed(2)}%`;
+        priceChangeElement.style.color = priceChange >= 0 ? '#4CAF50' : '#f44336';
+      }
+      if (sessionHighElement) sessionHighElement.textContent = `$${sessionHigh.toFixed(2)}`;
+      if (sessionLowElement) sessionLowElement.textContent = `$${sessionLow.toFixed(2)}`;
+    }
   }
 }
 

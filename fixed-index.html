@@ -192,6 +192,15 @@
 
   <!-- Load Observable Plot -->
   <script src="./static/observable-plot.min.js"></script>
+  <!-- Fallback for Observable Plot -->
+  <script>
+    if (typeof window.Plot === 'undefined') {
+      console.log('Observable Plot not loaded from primary source, trying fallback...');
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.11/dist/plot.umd.min.js';
+      document.head.appendChild(script);
+    }
+  </script>
 
   <!-- Inline compatibility module -->
   <script>
@@ -326,39 +335,60 @@
 
   <!-- Load the WebAssembly module -->
   <script type="module">
-    // Use a more reliable path that works with both local and GitHub Pages
-    const modulePath = window.location.pathname.endsWith('/')
-      ? `${window.location.pathname}pkg/rt_duckdb_coinbase.js`
-      : `${window.location.pathname}/pkg/rt_duckdb_coinbase.js`;
+    // Make the compatibility module available globally
+    window.CompatibilityModule = CompatibilityModule;
     
-    // Fallback to relative path if the above doesn't work
-    import(modulePath)
-      .then(module => {
-        // Make the compatibility module available globally
-        window.CompatibilityModule = CompatibilityModule;
-        
-        // Start the application
-        module.default();
-      })
-      .catch(err => {
-        console.error('Failed to load module from path:', modulePath, err);
-        console.log('Trying fallback path...');
-        
-        return import('./pkg/rt_duckdb_coinbase.js')
-          .then(module => {
-            // Make the compatibility module available globally
-            window.CompatibilityModule = CompatibilityModule;
-            
-            // Start the application
-            module.default();
-          })
-          .catch(err2 => {
-            console.error('Fallback also failed:', err2);
-            document.querySelectorAll('.chart').forEach(chart => {
-              chart.innerHTML = '<p style="color: red;">Failed to load WebAssembly module. Please check the console for errors.</p>';
-            });
-          });
+    // Try multiple possible paths for the WebAssembly module
+    const possiblePaths = [
+      './pkg/rt_duckdb_coinbase.js',
+      '../pkg/rt_duckdb_coinbase.js',
+      '/pkg/rt_duckdb_coinbase.js',
+      'pkg/rt_duckdb_coinbase.js',
+      '/rt-duckdb-coinbase/pkg/rt_duckdb_coinbase.js'
+    ];
+    
+    // Add dynamic path based on current location
+    if (window.location.pathname) {
+      const basePath = window.location.pathname.endsWith('/') 
+        ? window.location.pathname 
+        : window.location.pathname + '/';
+      possiblePaths.unshift(`${basePath}pkg/rt_duckdb_coinbase.js`);
+    }
+    
+    // Function to try loading from a path
+    async function tryLoadModule(path) {
+      console.log(`Trying to load WebAssembly module from: ${path}`);
+      try {
+        const module = await import(path);
+        console.log(`Successfully loaded module from: ${path}`);
+        return module;
+      } catch (err) {
+        console.warn(`Failed to load from ${path}:`, err);
+        return null;
+      }
+    }
+    
+    // Try each path in sequence
+    async function loadModule() {
+      for (const path of possiblePaths) {
+        const module = await tryLoadModule(path);
+        if (module) {
+          // Start the application
+          module.default();
+          return true;
+        }
+      }
+      
+      // If we get here, all paths failed
+      console.error('Failed to load WebAssembly module from all possible paths');
+      document.querySelectorAll('.chart').forEach(chart => {
+        chart.innerHTML = '<p style="color: red;">Failed to load WebAssembly module. Please check the console for errors.</p>';
       });
+      return false;
+    }
+    
+    // Start the loading process
+    loadModule();
   </script>
 
   <footer>

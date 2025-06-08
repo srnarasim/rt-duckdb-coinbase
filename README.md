@@ -64,16 +64,34 @@ rt-duckdb-coinbase/
 # Navigate to the project directory
 cd rt-duckdb-coinbase
 
-# Run the start script (builds and runs the unified server)
-./start.sh
+# Run with simulated data
+USE_SIMULATION=true ./start.sh
+
+# Or run with real NEX Stream
+NEX_URL="nats://your-nex-stream-url:4222" ./start.sh
 ```
 
 This will:
 1. Build the main application (WASM)
 2. Build the unified Rust server
 3. Start the server which:
-   - Serves the WebSocket proxy on port 3030 with simulated data
+   - Serves the WebSocket proxy on port 3030 (with real or simulated data)
    - Serves static files on port 54572
+
+#### NEX Stream Configuration
+
+By default, the server will try to connect to a public NATS server at `nats://demo.nats.io:4222`. You can override this by setting the `NEX_URL` environment variable:
+
+```bash
+# Connect to a specific NEX Stream
+NEX_URL="nats://username:password@your-nex-server:4222" ./start.sh
+```
+
+If you want to use simulated data instead of connecting to a real NEX Stream, set the `USE_SIMULATION` environment variable to `true`:
+
+```bash
+USE_SIMULATION=true ./start.sh
+```
 
 ### 2. Build and Run Components Separately
 
@@ -96,6 +114,8 @@ RUST_LOG=info ./target/release/rt-duckdb-coinbase-server --simulate --proxy-port
 - `--http-port <PORT>`: Port for the HTTP server (default: 54572)
 - `--simulate`: Enable simulated data mode
 - `--nex-url <URL>`: Real NEX Stream URL (if not simulating)
+  - Format: `nats://[username:password@]host:port`
+  - Example: `nats://demo.nats.io:4222` or `nats://user:pass@nats.example.com:4222`
 - `--static-dir <DIR>`: Directory to serve static files from (default: "../")
 
 #### Build the WASM Application Only
@@ -163,24 +183,31 @@ The implementation uses Rust compiled to WebAssembly for performance and reliabi
 
 ### NEX Stream Integration
 
-The application connects to a NEX Stream for real-time market data. The NEX Stream connection:
+The application connects to a NEX Stream (NATS) for real-time market data. The NEX Stream connection:
 
-- Uses WebSocket protocol for real-time data streaming
-- Subscribes to BTC/USD market data
+- Uses NATS protocol for real-time data streaming
+- Subscribes to BTC/USD market data (`market.btc-usd.trades` subject)
 - Transforms incoming data to a consistent format for processing
 - Handles connection errors gracefully with fallback options
 - Provides source information for data visualization
+
+The NEX Stream integration supports:
+- Authentication with username/password
+- Connection to any NATS server
+- Automatic reconnection on connection loss
+- JetStream support for persistent messaging
 
 ### NEX Stream Proxy
 
 The application includes a Rust-based proxy server that:
 
+- Connects to a real NEX Stream (NATS) server for live data
 - Simulates a NEX Stream when a real one is not available
 - Handles WebSocket connections from the browser
 - Manages client subscriptions to specific data subjects
-- Generates realistic market data with random price movements
+- Generates realistic market data with random price movements (in simulation mode)
 - Provides CORS headers for cross-origin requests
-- Can be configured to connect to a real NEX Stream when available
+- Serves static files for the web application
 
 ### DuckDB-WASM Analytics
 
