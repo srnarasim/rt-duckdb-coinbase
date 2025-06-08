@@ -80,17 +80,50 @@ This will:
 
 #### NEX Stream Configuration
 
-By default, the server will try to connect to a public NATS server at `nats://demo.nats.io:4222`. You can override this by setting the `NEX_URL` environment variable:
+By default, the server will start a local NATS server and NEX publisher that generates simulated data. This allows you to test the NEX Stream integration without needing an external NATS server.
+
+You can control this behavior with the following environment variables:
 
 ```bash
-# Connect to a specific NEX Stream
-NEX_URL="nats://username:password@your-nex-server:4222" ./start.sh
+# Use the local NATS server and NEX publisher (default)
+USE_LOCAL_NATS=true ./start.sh
+
+# Use simulated data directly in the server (no NATS)
+USE_SIMULATION=true ./start.sh
+
+# Connect to an external NEX Stream
+USE_LOCAL_NATS=false NEX_URL="nats://username:password@your-nex-server:4222" ./start.sh
 ```
 
-If you want to use simulated data instead of connecting to a real NEX Stream, set the `USE_SIMULATION` environment variable to `true`:
+##### Local NEX Publisher
+
+The local NEX publisher generates simulated BTC-USD trade data and publishes it to a local NATS server. You can customize its behavior with command-line options:
 
 ```bash
-USE_SIMULATION=true ./start.sh
+# Start just the NEX publisher with custom options
+./start-nex-publisher.sh --interval 500 --volatility 1.0 --initial-price 35000.0
+```
+
+Available options:
+- `--nats-url`: NATS server URL (default: nats://localhost:4222)
+- `--subject`: Subject to publish to (default: market.btc-usd.trades)
+- `--interval`: Interval between messages in milliseconds (default: 1000)
+- `--initial-price`: Initial price (default: 30000.0)
+- `--volatility`: Volatility percentage (default: 0.5)
+
+##### Starting Components Separately
+
+You can also start each component separately:
+
+```bash
+# Start the local NATS server
+./start-nats.sh
+
+# Start the NEX publisher
+./start-nex-publisher.sh
+
+# Start the server with NEX Stream
+./start-server-with-nex.sh
 ```
 
 ### 2. Build and Run Components Separately
