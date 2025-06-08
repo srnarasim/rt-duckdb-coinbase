@@ -145,9 +145,27 @@ async fn main() {
             }
         });
     
-    // Static file server
+    // Custom handler for JavaScript files to ensure correct MIME type
+    let js_files = warp::path::tail()
+        .and(warp::fs::file(static_dir.clone()))
+        .and_then(|tail: warp::path::Tail, file: warp::fs::File| async move {
+            let path = tail.as_str();
+            if path.ends_with(".js") {
+                // Set the correct MIME type for JavaScript files
+                Ok(warp::reply::with_header(file, "Content-Type", "application/javascript"))
+            } else if path.ends_with(".wasm") {
+                // Set the correct MIME type for WebAssembly files
+                Ok(warp::reply::with_header(file, "Content-Type", "application/wasm"))
+            } else {
+                // For other files, let warp handle the MIME type
+                Ok(file)
+            }
+        });
+    
+    // Static file server with custom MIME type handling
     let static_routes = warp::fs::dir(static_dir)
         .or(favicon_route)
+        .or(js_files)
         .with(cors)
         .with(warp::log("static_server"));
     

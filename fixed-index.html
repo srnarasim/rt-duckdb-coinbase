@@ -347,13 +347,8 @@
       '/rt-duckdb-coinbase/pkg/rt_duckdb_coinbase.js'
     ];
     
-    // Add dynamic path based on current location
-    if (window.location.pathname) {
-      const basePath = window.location.pathname.endsWith('/') 
-        ? window.location.pathname 
-        : window.location.pathname + '/';
-      possiblePaths.unshift(`${basePath}pkg/rt_duckdb_coinbase.js`);
-    }
+    // Don't add dynamic path based on current location as it causes MIME type issues
+    // Instead, rely on the relative paths in the possiblePaths array
     
     // Function to try loading from a path
     async function tryLoadModule(path) {
