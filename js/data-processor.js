@@ -365,6 +365,11 @@ class DataProcessor {
   async getVolumeData(timeframe) {
     await this.initialize();
     
+    // In simulation mode, return data from buffer
+    if (this.isSimulation) {
+      return this.getSimulatedVolumeData(timeframe);
+    }
+    
     // Calculate time window
     const now = Date.now();
     const timeWindow = timeframe * 60 * 1000; // Convert minutes to milliseconds
@@ -391,6 +396,11 @@ class DataProcessor {
   
   async getVolatilityData(timeframe) {
     await this.initialize();
+    
+    // In simulation mode, return data from buffer
+    if (this.isSimulation) {
+      return this.getSimulatedVolatilityData(timeframe);
+    }
     
     // Calculate time window
     const now = Date.now();
@@ -429,9 +439,9 @@ class DataProcessor {
   async getPriceDistribution(timeframe, bins = 10) {
     await this.initialize();
     
-    // Check if we're in simulation mode
-    if (this.simulationMode) {
-      return this.getSimulatedPriceDistribution(bins);
+    // In simulation mode, return data from buffer
+    if (this.isSimulation) {
+      return this.getSimulatedPriceDistribution(timeframe, bins);
     }
     
     // Calculate time window
@@ -504,9 +514,9 @@ class DataProcessor {
   async getMovingAverages(timeframe) {
     await this.initialize();
     
-    // Check if we're in simulation mode
-    if (this.simulationMode) {
-      return this.getSimulatedMovingAverages();
+    // In simulation mode, return data from buffer
+    if (this.isSimulation) {
+      return this.getSimulatedMovingAverages(timeframe);
     }
     
     // Calculate time window
@@ -620,6 +630,132 @@ class DataProcessor {
       data.push({
         timestamp,
         price,
+        ma_10,
+        ma_20,
+        ma_50
+      });
+    }
+    
+    return data;
+  }
+  
+  /**
+   * Generate simulated volume data for fallback
+   */
+  getSimulatedVolumeData(timeframe) {
+    const now = Date.now();
+    const timeWindow = timeframe * 60 * 1000;
+    const startTime = now - timeWindow;
+    
+    // Filter buffer data by timeframe
+    const filteredData = this.dataBuffer
+      .filter(item => item.timestamp >= startTime)
+      .map(item => ({
+        timestamp: item.timestamp,
+        volume: item.data.size || Math.random() * 0.5,
+        price: item.data.price
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
+    
+    return filteredData;
+  }
+  
+  /**
+   * Generate simulated volatility data for fallback
+   */
+  getSimulatedVolatilityData(timeframe) {
+    const priceData = this.getSimulatedPriceData(timeframe);
+    
+    if (priceData.length < 2) {
+      return [];
+    }
+    
+    // Calculate price changes
+    const changes = [];
+    for (let i = 1; i < priceData.length; i++) {
+      const change = (priceData[i].price - priceData[i-1].price) / priceData[i-1].price;
+      changes.push(change);
+    }
+    
+    // Calculate volatility (standard deviation of returns)
+    const mean = changes.reduce((sum, change) => sum + change, 0) / changes.length;
+    const variance = changes.reduce((sum, change) => sum + Math.pow(change - mean, 2), 0) / changes.length;
+    const volatility = Math.sqrt(variance) * 100; // Convert to percentage
+    
+    return [{
+      timestamp: Date.now(),
+      volatility: volatility
+    }];
+  }
+  
+  /**
+   * Generate simulated price distribution with timeframe support
+   */
+  getSimulatedPriceDistribution(timeframe, bins = 10) {
+    const priceData = this.getSimulatedPriceData(timeframe);
+    
+    if (priceData.length === 0) {
+      return this.getSimulatedPriceDistribution(bins); // Fallback to original method
+    }
+    
+    const prices = priceData.map(d => d.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const binWidth = (maxPrice - minPrice) / bins;
+    
+    const distribution = [];
+    
+    for (let i = 0; i < bins; i++) {
+      const binStart = minPrice + (i * binWidth);
+      const binEnd = binStart + binWidth;
+      
+      // Count prices in this bin
+      const frequency = prices.filter(price => 
+        price >= binStart && (i === bins - 1 ? price <= binEnd : price < binEnd)
+      ).length;
+      
+      distribution.push({
+        bin_start: binStart,
+        bin_end: binEnd,
+        bin_number: i,
+        frequency: frequency
+      });
+    }
+    
+    return distribution;
+  }
+  
+  /**
+   * Generate simulated moving averages with timeframe support
+   */
+  getSimulatedMovingAverages(timeframe) {
+    const priceData = this.getSimulatedPriceData(timeframe);
+    
+    if (priceData.length === 0) {
+      return this.getSimulatedMovingAverages(); // Fallback to original method
+    }
+    
+    const data = [];
+    
+    for (let i = 0; i < priceData.length; i++) {
+      const item = priceData[i];
+      
+      // Calculate moving averages (simple approximation)
+      const ma_10 = i >= 9 ? 
+        priceData.slice(Math.max(0, i - 9), i + 1).reduce((sum, d) => sum + d.price, 0) / Math.min(10, i + 1) :
+        item.price;
+        
+      const ma_20 = i >= 19 ? 
+        priceData.slice(Math.max(0, i - 19), i + 1).reduce((sum, d) => sum + d.price, 0) / Math.min(20, i + 1) :
+        item.price;
+        
+      const ma_50 = i >= 49 ? 
+        priceData.slice(Math.max(0, i - 49), i + 1).reduce((sum, d) => sum + d.price, 0) / Math.min(50, i + 1) :
+        item.price;
+      
+      data.push({
+        timestamp: item.timestamp,
+        price: item.price,
         ma_10,
         ma_20,
         ma_50

@@ -207,3 +207,13 @@ window.addTradeData = function(data) {
 
 // Auto-initialize when script loads
 console.log("🧠 DuckDB simple initialization script loaded");
+
+// Initialize immediately when script loads
+(async function() {
+  try {
+    await window.initializeDuckDB();
+    console.log("🚀 Auto-initialization completed successfully");
+  } catch (error) {
+    console.error("❌ Auto-initialization failed:", error);
+  }
+})();
