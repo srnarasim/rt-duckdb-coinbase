@@ -10,55 +10,53 @@
   <div id="status">Loading...</div>
   <div id="results"></div>
   
-  <!-- DuckDB WASM Implementation -->
-  <script src="static/duckdb-wasm.js"></script>
+  <!-- Real DuckDB WASM Implementation (CORS-safe with local files) -->
+  <script src="static/duckdb-wasm/duckdb-init-real.js?v=14"></script>
   
   <script>
-    document.addEventListener("DOMContentLoaded", async () => {
-      const statusDiv = document.getElementById("status");
-      const resultsDiv = document.getElementById("results");
+    console.log("🔍 Starting DuckDB CORS test...");
+    
+    // Listen for DuckDB events
+    window.addEventListener('duckdb-ready', (event) => {
+      console.log("✅ DuckDB ready event:", event.detail);
+      document.getElementById('status').textContent = `DuckDB Ready: ${event.detail.type}`;
       
+      // Test a simple query
+      testDuckDBQuery();
+    });
+    
+    window.addEventListener('duckdb-error', (event) => {
+      console.error("❌ DuckDB error event:", event.detail);
+      document.getElementById('status').textContent = `DuckDB Error: ${event.detail.error}`;
+    });
+    
+    async function testDuckDBQuery() {
       try {
-        statusDiv.textContent = "Testing DuckDB availability...";
+        console.log("🔍 Testing DuckDB query...");
         
-        // Check if DuckDB is available
-        if (typeof duckdb === 'undefined') {
-          throw new Error("DuckDB is not defined");
+        if (window.duckdbConnection) {
+          const result = await window.duckdbConnection.query("SELECT 42 as answer, 'Hello DuckDB' as message");
+          const data = result.toArray();
+          console.log("✅ Query result:", data);
+          
+          document.getElementById('results').innerHTML = `
+            <h3>Query Test Results:</h3>
+            <p>Query: SELECT 42 as answer, 'Hello DuckDB' as message</p>
+            <p>Result: ${JSON.stringify(data)}</p>
+            <p>DuckDB Type: ${window.duckdbReal ? 'Real' : 'Mock'}</p>
+          `;
+        } else {
+          throw new Error("DuckDB connection not available");
         }
         
-        statusDiv.textContent = "DuckDB found! Creating database...";
-        
-        // Create database instance
-        const db = new duckdb.AsyncDuckDB();
-        await db.instantiate();
-        
-        statusDiv.textContent = "Database created! Connecting...";
-        
-        // Connect to database
-        const conn = await db.connect();
-        
-        statusDiv.textContent = "Connected! Running test query...";
-        
-        // Run a simple test query
-        const result = await conn.query("SELECT 42 as answer, 'Hello DuckDB' as message");
-        
-        statusDiv.textContent = "Query executed successfully!";
-        
-        // Display results
-        const data = result.toArray();
-        resultsDiv.innerHTML = `
-          <h2>Query Results:</h2>
-          <pre>${JSON.stringify(data, null, 2)}</pre>
+      } catch (error) {
+        console.error("❌ Query test failed:", error);
+        document.getElementById('results').innerHTML = `
+          <h3>Query Test Failed:</h3>
+          <p>Error: ${error.message}</p>
         `;
-        
-        console.log("DuckDB test successful:", data);
-        
-      } catch (e) {
-        statusDiv.textContent = `Error: ${e.message}`;
-        resultsDiv.innerHTML = `<pre style="color: red;">${e.stack}</pre>`;
-        console.error("DuckDB test failed:", e);
       }
-    });
+    }
   </script>
 </body>
 </html>

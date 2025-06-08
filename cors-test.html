@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DuckDB CORS Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>DuckDB CORS Test</h1>
+    <div id="status">Testing...</div>
+    <div id="logs"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+        
+        function log(message) {
+            console.log(message);
+            const logDiv = document.createElement('div');
+            logDiv.className = 'log';
+            logDiv.innerHTML = message;
+            logsDiv.appendChild(logDiv);
+        }
+        
+        async function testDuckDB() {
+            try {
+                log('🚀 Testing DuckDB-WASM from CDN...');
+                
+                // Test importing DuckDB-WASM
+                const duckdb = await import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@latest/+esm');
+                log('✅ DuckDB module imported successfully');
+                
+                // Test getting bundles
+                const bundles = duckdb.getJsDelivrBundles();
+                log('✅ Bundles retrieved: ' + Object.keys(bundles).join(', '));
+                
+                // Test bundle selection
+                const bundle = await duckdb.selectBundle(bundles);
+                log('✅ Bundle selected successfully');
+                log('📦 Bundle details: ' + JSON.stringify(bundle, null, 2));
+                
+                // Test worker creation
+                const worker_url = URL.createObjectURL(
+                    new Blob([`importScripts("${bundle.mainWorker}");`], {type: 'text/javascript'})
+                );
+                log('✅ Worker URL created: ' + worker_url);
+                
+                const worker = new Worker(worker_url);
+                log('✅ Worker created successfully');
+                
+                const logger = new duckdb.ConsoleLogger();
+                const db = new duckdb.AsyncDuckDB(logger, worker);
+                log('✅ AsyncDuckDB instance created');
+                
+                // Test instantiation
+                await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+                log('✅ DuckDB instantiated successfully');
+                
+                // Test connection
+                const connection = await db.connect();
+                log('✅ Connection established');
+                
+                // Test query
+                const result = await connection.query('SELECT 42 as answer, \'Hello Real DuckDB!\' as message');
+                const data = result.toArray();
+                log('✅ Query executed successfully: ' + JSON.stringify(data));
+                
+                URL.revokeObjectURL(worker_url);
+                log('✅ Cleanup completed');
+                
+                statusDiv.innerHTML = '<span class="success">✅ SUCCESS: Real DuckDB-WASM working perfectly! No CORS issues!</span>';
+                
+            } catch (error) {
+                log('❌ Error: ' + error.message);
+                log('❌ Stack: ' + error.stack);
+                statusDiv.innerHTML = '<span class="error">❌ FAILED: ' + error.message + '</span>';
+            }
+        }
+        
+        // Run test when page loads
+        testDuckDB();
+    </script>
+</body>
+</html>
