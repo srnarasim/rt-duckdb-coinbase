@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DuckDB Test</title>
+</head>
+<body>
+  <h1>DuckDB WASM Test</h1>
+  <div id="status">Loading...</div>
+  <div id="results"></div>
+  
+  <!-- DuckDB WASM Implementation -->
+  <script src="static/duckdb-wasm.js"></script>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const statusDiv = document.getElementById("status");
+      const resultsDiv = document.getElementById("results");
+      
+      try {
+        statusDiv.textContent = "Testing DuckDB availability...";
+        
+        // Check if DuckDB is available
+        if (typeof duckdb === 'undefined') {
+          throw new Error("DuckDB is not defined");
+        }
+        
+        statusDiv.textContent = "DuckDB found! Creating database...";
+        
+        // Create database instance
+        const db = new duckdb.AsyncDuckDB();
+        await db.instantiate();
+        
+        statusDiv.textContent = "Database created! Connecting...";
+        
+        // Connect to database
+        const conn = await db.connect();
+        
+        statusDiv.textContent = "Connected! Running test query...";
+        
+        // Run a simple test query
+        const result = await conn.query("SELECT 42 as answer, 'Hello DuckDB' as message");
+        
+        statusDiv.textContent = "Query executed successfully!";
+        
+        // Display results
+        const data = result.toArray();
+        resultsDiv.innerHTML = `
+          <h2>Query Results:</h2>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+        
+        console.log("DuckDB test successful:", data);
+        
+      } catch (e) {
+        statusDiv.textContent = `Error: ${e.message}`;
+        resultsDiv.innerHTML = `<pre style="color: red;">${e.stack}</pre>`;
+        console.error("DuckDB test failed:", e);
+      }
+    });
+  </script>
+</body>
+</html>

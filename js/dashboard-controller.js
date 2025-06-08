@@ -32,14 +32,11 @@ class DashboardController {
     // Initialize UI event listeners
     this.initializeEventListeners();
     
-    // Connect to WebSocket
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.hostname;
-    const wsPort = 3030; // Default WebSocket port
-    const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}`;
+    // For demo purposes, skip WebSocket connection and use simulated data
+    console.log("Skipping WebSocket connection for demo - using simulated data");
     
-    this.connector = new DataConnector(wsUrl, (data) => this.handleData(data));
-    this.connector.connect();
+    // Generate some initial demo data
+    this.generateDemoData();
     
     // Start update loop
     this.startUpdateLoop();
@@ -195,5 +192,34 @@ class DashboardController {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
     }
+  }
+  
+  generateDemoData() {
+    // Generate some demo data to show that DuckDB is working
+    console.log("Generating demo data...");
+    
+    // Simulate receiving some trade data
+    const now = Date.now();
+    for (let i = 0; i < 10; i++) {
+      const price = 30000 + Math.random() * 2000;
+      const time = new Date(now - (10 - i) * 60000).toISOString();
+      
+      const demoData = {
+        subject: "market.btc-usd.trades",
+        data: {
+          price: price,
+          size: Math.random(),
+          side: Math.random() > 0.5 ? "buy" : "sell",
+          exchange: "demo",
+          pair: "BTC-USD"
+        },
+        timestamp: now - (10 - i) * 60000
+      };
+      
+      // Process the demo data
+      this.handleData(demoData);
+    }
+    
+    console.log("Demo data generated");
   }
 }

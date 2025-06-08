@@ -29,7 +29,7 @@ class ChartRenderer {
       price: d.price
     }));
     
-    // Create price chart using Observable Plot
+    // Create price chart using Observable Plot (mock implementation)
     this.chart = Plot.plot({
       y: {
         grid: true,
@@ -41,25 +41,16 @@ class ChartRenderer {
         grid: true
       },
       marks: [
-        Plot.line(plotData, {
+        {
+          data: plotData,
           x: "time",
           y: "price",
           stroke: "#3498db",
           strokeWidth: 2
-        }),
-        Plot.dot(plotData, {
-          x: "time",
-          y: "price",
-          stroke: "#3498db",
-          fill: "white"
-        })
+        }
       ],
-      width: this.container.clientWidth,
-      height: 300,
-      marginLeft: 60,
-      marginRight: 40,
-      marginBottom: 40,
-      marginTop: 40
+      width: this.container.clientWidth || 600,
+      height: 300
     });
     
     this.container.appendChild(this.chart);
