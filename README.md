@@ -58,45 +58,54 @@ rt-duckdb-coinbase/
 
 ## 🛠️ Getting Started
 
-### 1. Build and Run with NEX Stream Proxy
+### 1. Build and Run with Unified Rust Server
 
 ```bash
 # Navigate to the project directory
 cd rt-duckdb-coinbase
 
-# Run the start script (builds and runs both the proxy and main app)
+# Run the start script (builds and runs the unified server)
 ./start.sh
 ```
 
 This will:
-1. Start the NEX Stream proxy with simulated data on port 3030
-2. Build the main application
-3. Start a web server on port 54572
+1. Build the main application (WASM)
+2. Build the unified Rust server
+3. Start the server which:
+   - Serves the WebSocket proxy on port 3030 with simulated data
+   - Serves static files on port 54572
 
 ### 2. Build and Run Components Separately
 
-#### Start the NEX Stream Proxy
+#### Build and Run the Unified Server
 
 ```bash
 # Navigate to the proxy directory
 cd rt-duckdb-coinbase/proxy
 
-# Build and run the proxy with simulated data
+# Build the server
 cargo build --release
-RUST_LOG=info ./target/release/nex-stream-proxy --simulate --port 3030
+
+# Run the server with options
+RUST_LOG=info ./target/release/rt-duckdb-coinbase-server --simulate --proxy-port 3030 --http-port 54572 --static-dir ".."
 ```
 
-#### Start the Main Application
+#### Available Command-Line Options
+
+- `--proxy-port <PORT>`: Port for the WebSocket proxy (default: 3030)
+- `--http-port <PORT>`: Port for the HTTP server (default: 54572)
+- `--simulate`: Enable simulated data mode
+- `--nex-url <URL>`: Real NEX Stream URL (if not simulating)
+- `--static-dir <DIR>`: Directory to serve static files from (default: "../")
+
+#### Build the WASM Application Only
 
 ```bash
-# In another terminal, navigate to the project directory
+# Navigate to the project directory
 cd rt-duckdb-coinbase
 
 # Build the Rust code to WASM
 ./build.sh
-
-# Start a simple HTTP server
-python -m http.server 54572
 ```
 
 ### 3. Using Trunk (Alternative)

@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::collections::HashMap;
 use std::error::Error as StdError;
+use std::path::Path;
 
 use tokio::sync::mpsc;
 use tokio::time::interval;
@@ -17,9 +18,13 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Port to listen on
+    /// Port to listen on for WebSocket proxy
     #[arg(short, long, default_value_t = 3030)]
-    port: u16,
+    proxy_port: u16,
+
+    /// Port to listen on for HTTP server
+    #[arg(short = 'P', long, default_value_t = 54572)]
+    http_port: u16,
 
     /// Enable simulated data mode
     #[arg(short, long)]
@@ -28,6 +33,10 @@ struct Args {
     /// Real NEX Stream URL (if not simulating)
     #[arg(short, long, default_value = "")]
     nex_url: String,
+    
+    /// Directory to serve static files from
+    #[arg(short, long, default_value = "../")]
+    static_dir: String,
 }
 
 // NEX Stream message structure
@@ -94,17 +103,56 @@ async fn main() {
     let health_route = warp::path("health")
         .map(|| "NEX Stream Proxy is running");
     
-    // Combine routes
-    let routes = ws_route
+    // Combine routes for proxy server
+    let proxy_routes = ws_route
         .or(health_route)
-        .with(cors)
+        .with(cors.clone())
         .with(warp::log("nex_proxy"));
     
-    // Start the server
-    info!("Starting NEX Stream proxy server on port {}", args.port);
-    warp::serve(routes)
-        .run(([0, 0, 0, 0], args.port))
-        .await;
+    // Start the proxy server
+    info!("Starting NEX Stream proxy server on port {}", args.proxy_port);
+    let proxy_server = warp::serve(proxy_routes)
+        .run(([0, 0, 0, 0], args.proxy_port));
+    
+    // Create static file server
+    let static_dir = args.static_dir.clone();
+    info!("Serving static files from directory: {}", static_dir);
+    
+    // Favicon handler to prevent 404 errors
+    let static_dir_clone = static_dir.clone();
+    let favicon_route = warp::path("favicon.ico")
+        .map(move || {
+            let path = Path::new(&static_dir_clone).join("favicon.ico");
+            if path.exists() {
+                warp::reply::with_header(
+                    warp::reply::html(""),
+                    "Content-Type",
+                    "image/x-icon",
+                )
+            } else {
+                // Return an empty favicon to prevent 404 errors
+                warp::reply::with_header(
+                    warp::reply::html(""),
+                    "Content-Type",
+                    "image/x-icon",
+                )
+            }
+        });
+    
+    // Static file server
+    let static_routes = warp::fs::dir(static_dir)
+        .or(favicon_route)
+        .with(cors)
+        .with(warp::log("static_server"));
+    
+    // Start the static file server
+    info!("Starting static file server on port {}", args.http_port);
+    let static_server = warp::serve(static_routes)
+        .run(([0, 0, 0, 0], args.http_port));
+    
+    // Run both servers concurrently
+    info!("Both servers are running. Press Ctrl+C to stop.");
+    futures::join!(proxy_server, static_server);
 }
 
 // Helper function to pass clients to route handlers
