@@ -13,7 +13,7 @@ js-sys = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 console_error_panic_hook = "0.1.7"
-wasm-bindgen-futures = "0.4.37"
+wasm-bindgen-futures = "0.4.56"
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
